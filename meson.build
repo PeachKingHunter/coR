@@ -7,5 +7,9 @@ wlroots = dependency('wlroots-0.20')
 executable(
     'executable.out',
     'src/main.c',
+    'src/coRState.c',
+    'src/coROutput.c',
+    'src/coRSurface.c',
+    'src/coRXdgSurface.c',
     dependencies: [wayland_server, wlroots]
 )
