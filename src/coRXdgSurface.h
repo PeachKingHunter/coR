@@ -17,6 +17,7 @@ struct coR_xdg_surface {
   struct wl_listener mapListener;
   struct wl_listener unMapListener;
   struct wl_listener destroyListener;
+  struct wl_listener commitListener;
 
   // List
   struct wl_list link;

@@ -1,5 +1,16 @@
 #include "coRXdgSurface.h"
 
+static void commitXdgSurfaceHandler(struct wl_listener *listener, void *data) {
+  printf("-> commit XdgSurface\n");
+
+  struct coR_xdg_surface *coRXdgSurface =
+      wl_container_of(listener, coRXdgSurface, commitListener);
+
+  if (coRXdgSurface->xdgSurface->initialized)
+    if (!coRXdgSurface->xdgSurface->configured)
+      wlr_xdg_surface_schedule_configure(coRXdgSurface->xdgSurface);
+}
+
 static void mapXdgSurfaceHandler(struct wl_listener *listener, void *data) {
   printf("-> map XdgSurface\n");
 }
@@ -42,7 +53,6 @@ void newXdgSurfaceHandler(struct wl_listener *listener, void *data) {
 
   wl_list_insert(&coRState->xdgSurfaces, &coRXdgSurface->link);
   printf("-> Surface saved\n");
-
   // 3.
 
   // 4.
@@ -55,6 +65,10 @@ void newXdgSurfaceHandler(struct wl_listener *listener, void *data) {
 
   coRXdgSurface->destroyListener.notify = destroyXdgSurfaceHandler;
   wl_signal_add(&xdgSurface->events.destroy, &coRXdgSurface->destroyListener);
+
+  coRXdgSurface->commitListener.notify = commitXdgSurfaceHandler;
+  wl_signal_add(&xdgSurface->surface->events.commit,
+                &coRXdgSurface->commitListener);
 }
 
 /* The lifecycle of an XDG surface follows these main states:

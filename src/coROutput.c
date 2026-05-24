@@ -40,10 +40,6 @@ void outputFrameHandler(struct wl_listener *listener, void *data) {
   //   Les dessiner à leur position (ex: wlr_render_pass_add_texture).
   struct coR_xdg_surface *s;
   wl_list_for_each(s, &coRState->xdgSurfaces, link) {
-    if (s->xdgSurface->initialized)
-      if (!s->xdgSurface->configured)
-        wlr_xdg_surface_schedule_configure(s->xdgSurface);
-
     if (s->xdgSurface->surface->mapped == false)
       continue;
 
