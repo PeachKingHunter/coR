@@ -1,6 +1,7 @@
 #ifndef CoRXdgSurface_H
 #define CoRXdgSurface_H
 
+#include "coRInputs.h"
 #include "coRState.h"
 
 // wlroot
@@ -12,6 +13,7 @@
 // Struture
 struct coR_xdg_surface {
   struct wlr_xdg_surface *xdgSurface;
+  struct coR_state *coRState;
 
   // Listeners
   struct wl_listener mapListener;
@@ -26,8 +28,8 @@ struct coR_xdg_surface {
 // Methods
 // static void mapXdgSurfaceHandler(struct wl_listener *listener, void *data);
 // static void unmapXdgSurfaceHandler(struct wl_listener *listener, void *data);
-// static void destroyXdgSurfaceHandler(struct wl_listener *listener, void *data);
-void newXdgSurfaceHandler(struct wl_listener *listener, void *data) ;
-
+// static void destroyXdgSurfaceHandler(struct wl_listener *listener, void
+// *data);
+void newXdgSurfaceHandler(struct wl_listener *listener, void *data);
 
 #endif

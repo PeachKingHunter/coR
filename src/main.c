@@ -1,8 +1,11 @@
 // My lib
-#include "coRState.h"
 #include "coROutput.h"
-#include "coRXdgSurface.h"
+#include "coRState.h"
 #include "coRSurface.h"
+#include "coRXdgSurface.h"
+
+#include "coRInputs.h"
+#include "wlr/backend/session.h"
 
 // Rendering
 #include <wlr/render/allocator.h>
@@ -25,7 +28,8 @@ int main() {
   /* Initialization Pattern
     0.Structure for server's components, listeners
     1.Create a Wayland display
-    2.Create a wlroots backend
+    2.Create a wlroots backend (graphical)
+    2.1 Inputs managing
     2.5.Render's main components
     2.7 Compositor for surface managing
     3.Set up event listeners
@@ -44,11 +48,22 @@ int main() {
 
   // 2.
   struct wl_event_loop *eventLoop = wl_display_get_event_loop(display);
+
   struct wlr_backend *backend = wlr_backend_autocreate(eventLoop, NULL);
   if (!backend)
     exit(1);
   // coRState.eventLoop = eventLoop;
   coRState.backend = backend;
+
+  // 2.1
+  coRState.session = wlr_session_create(eventLoop);
+  coRState.seat = wlr_seat_create(display, "cearT0");
+  // struct wlr_backend *inputBackend
+  // =wlr_libinput_backend_create(coRState.session); Pas obligatoire + a
+  // fusionner avec l'autre backend
+
+  // Set capabilities
+  wlr_seat_set_capabilities(coRState.seat, WL_SEAT_CAPABILITY_KEYBOARD);
 
   // 2.5.
   coRState.renderer = wlr_renderer_autocreate(backend);
@@ -79,6 +94,9 @@ int main() {
   coRState.newXdgSurfaceListener.notify = newXdgSurfaceHandler;
   wl_signal_add(&xdgShell->events.new_surface, &coRState.newXdgSurfaceListener);
 
+  coRState.newInputListener.notify = newInputHandler;
+  wl_signal_add(&backend->events.new_input, &coRState.newInputListener);
+
   // Socket for get apps
   const char *socket = wl_display_add_socket_auto(coRState.display);
   if (!socket) {
@@ -94,11 +112,14 @@ int main() {
     // execlp("sh", "sh", "-c", "kitty", (char *)NULL);
     // execlp("kitty", "kitty", (char *)NULL);
     // execlp("dolphin", "dolphin", (char *)NULL);
-    execlp("weston-simple-shm", "weston-simple-shm", NULL);
-    // execlp("weston-terminal", "weston-terminal", NULL);
+    // execlp("weston-simple-shm", "weston-simple-shm", NULL);
+    execlp("weston-terminal", "weston-terminal", NULL);
   }
   wlr_log(WLR_INFO, "Running Wayland compositor on WAYLAND_DISPLAY=%s", socket);
 
   // 5.
   wl_display_run(display);
+
+  // Clear
+  wlr_seat_destroy(coRState.seat);
 }

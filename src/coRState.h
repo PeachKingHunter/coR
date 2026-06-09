@@ -3,6 +3,7 @@
 
 // wlroot for initialization Pattern
 #include <wayland-server-core.h>
+#include "wlr/types/wlr_seat.h"
 
 // Structure
 struct coR_state {
@@ -14,15 +15,24 @@ struct coR_state {
   // For surfaces
   struct wlr_compositor *compositor;
   struct wl_list xdgSurfaces;
+  struct wlr_surface *focusedSurface;
 
   // Components for render outputs
   struct wlr_renderer *renderer;
   struct wlr_allocator *allocator;
 
+  // For lib input of wlr
+  struct wlr_session *session;
+  struct wlr_seat *seat; // For peripherics
+  struct coR_input_d *temp;
+
   // Listeners
   struct wl_listener newOutputListener;
   struct wl_listener newSurfaceListener;
   struct wl_listener newXdgSurfaceListener;
+
+  struct wl_listener newInputListener;
+  struct wl_listener grabKeyboardBeginListener;
 };
 
 #endif

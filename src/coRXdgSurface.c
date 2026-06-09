@@ -1,22 +1,61 @@
 #include "coRXdgSurface.h"
+#include "coRState.h"
+#include <stdio.h>
 
 static void commitXdgSurfaceHandler(struct wl_listener *listener, void *data) {
-  printf("-> commit XdgSurface\n");
+  // printf("-> commit XdgSurface\n");
 
   struct coR_xdg_surface *coRXdgSurface =
       wl_container_of(listener, coRXdgSurface, commitListener);
 
-  if (coRXdgSurface->xdgSurface->initialized)
-    if (!coRXdgSurface->xdgSurface->configured)
+  if (coRXdgSurface->xdgSurface->initialized) {
+    if (!coRXdgSurface->xdgSurface->configured) {
+      printf("-> first commit XdgSurface\n");
       wlr_xdg_surface_schedule_configure(coRXdgSurface->xdgSurface);
+    }
+  }
 }
 
 static void mapXdgSurfaceHandler(struct wl_listener *listener, void *data) {
   printf("-> map XdgSurface\n");
+
+  struct coR_xdg_surface *coRXdgSurface =
+      wl_container_of(listener, coRXdgSurface, mapListener);
+  struct coR_state *coRState = coRXdgSurface->coRState;
+
+  // Obtien le clavier
+  struct coR_input_d *coRInputD = coRState->temp;
+  struct wlr_keyboard *keyboard =
+      // wlr_keyboard_from_input_device(coRInputD->inputDevice);
+      wlr_seat_get_keyboard(coRState->seat);
+
+  // Suprime l'ancien focus
+  if (coRState->focusedSurface) {
+    wlr_seat_keyboard_clear_focus(coRState->seat);
+  }
+
+  // Change focus
+  coRState->focusedSurface = coRXdgSurface->xdgSurface->surface;
+
+  if (keyboard) {
+    wlr_seat_keyboard_notify_enter(coRState->seat, coRState->focusedSurface,
+                                   keyboard->keycodes, keyboard->num_keycodes,
+                                   &keyboard->modifiers);
+  }
+  printf("Focuse changed\n");
 }
 
 static void unmapXdgSurfaceHandler(struct wl_listener *listener, void *data) {
   printf("-> unmap XdgSurface\n");
+
+  struct coR_xdg_surface *coRXdgSurface =
+      wl_container_of(listener, coRXdgSurface, mapListener);
+  struct coR_state *coRState = coRXdgSurface->coRState;
+
+  if (coRState->focusedSurface == coRXdgSurface->xdgSurface->surface) {
+    coRState->focusedSurface = NULL;
+    wlr_seat_keyboard_clear_focus(coRState->seat);
+  }
 }
 
 static void destroyXdgSurfaceHandler(struct wl_listener *listener, void *data) {
@@ -50,6 +89,7 @@ void newXdgSurfaceHandler(struct wl_listener *listener, void *data) {
     return;
   }
   coRXdgSurface->xdgSurface = xdgSurface;
+  coRXdgSurface->coRState = coRState;
 
   wl_list_insert(&coRState->xdgSurfaces, &coRXdgSurface->link);
   printf("-> Surface saved\n");
@@ -69,6 +109,8 @@ void newXdgSurfaceHandler(struct wl_listener *listener, void *data) {
   coRXdgSurface->commitListener.notify = commitXdgSurfaceHandler;
   wl_signal_add(&xdgSurface->surface->events.commit,
                 &coRXdgSurface->commitListener);
+
+  printf("give focus\n");
 }
 
 /* The lifecycle of an XDG surface follows these main states:
