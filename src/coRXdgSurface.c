@@ -1,6 +1,7 @@
 #include "coRXdgSurface.h"
 #include "coRState.h"
 #include <stdio.h>
+#include <wayland-util.h>
 
 static void commitXdgSurfaceHandler(struct wl_listener *listener, void *data) {
   // printf("-> commit XdgSurface\n");
@@ -60,6 +61,31 @@ static void unmapXdgSurfaceHandler(struct wl_listener *listener, void *data) {
 
 static void destroyXdgSurfaceHandler(struct wl_listener *listener, void *data) {
   printf("-> destroy XdgSurface\n");
+  /*
+    1. Retirer de la liste dans struct coR_state
+    2. Retire les listeners de leur listes
+    3. Clear la mémoire utilisé
+  */
+
+  // Variables
+  struct wlr_xdg_surface *xdgSurface = data;
+
+  struct coR_xdg_surface *coRXdgSurface =
+      wl_container_of(listener, coRXdgSurface, destroyListener);
+  struct coR_state *coRState = coRXdgSurface->coRState;
+
+  // 1.
+  wl_list_remove(&coRXdgSurface->link);
+
+  // 2.
+  wl_list_remove(&coRXdgSurface->mapListener.link);
+  wl_list_remove(&coRXdgSurface->unMapListener.link);
+  wl_list_remove(&coRXdgSurface->destroyListener.link);
+  wl_list_remove(&coRXdgSurface->commitListener.link);
+
+  // 3.
+  free(coRXdgSurface);
+  printf("<- destroy XdgSurface\n");
 }
 
 void newXdgSurfaceHandler(struct wl_listener *listener, void *data) {
@@ -70,7 +96,6 @@ void newXdgSurfaceHandler(struct wl_listener *listener, void *data) {
     3.Configuration (XDG uniquement) : Envoyer un configure au client pour qu’il
       définisse sa taille/position.
     4.Écoute des états : Gérer map/unmap/destroy
-      (pour savoir quand afficher/masquer la surface).
     5.Rendering : Dans outputFrameHandler, parcourir les surfaces mappées.
       Récupérer leur texture (wlr_surface_get_texture).
       Les dessiner à leur position (ex: wlr_render_pass_add_texture).

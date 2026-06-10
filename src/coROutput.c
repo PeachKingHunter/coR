@@ -1,4 +1,6 @@
 #include "coROutput.h"
+#include "src/coRInputs.h"
+#include <wayland-util.h>
 
 void outputFrameHandler(struct wl_listener *listener, void *data) {
   // printf("-> Render frame of an output\n");
@@ -38,28 +40,31 @@ void outputFrameHandler(struct wl_listener *listener, void *data) {
   // TODO: render surfaces
   //   Récupérer leur texture (wlr_surface_get_texture).
   //   Les dessiner à leur position (ex: wlr_render_pass_add_texture).
-  struct coR_xdg_surface *s;
-  wl_list_for_each(s, &coRState->xdgSurfaces, link) {
-    if (s->xdgSurface->surface->mapped == false)
-      continue;
 
-    struct wlr_texture *texture =
-        wlr_surface_get_texture(s->xdgSurface->surface);
-    if (texture == NULL)
-      continue;
+  if (!wl_list_empty(&coRState->xdgSurfaces)) { // Pas sûre de l'utilité de se if
+    struct coR_xdg_surface *s;
+    wl_list_for_each(s, &coRState->xdgSurfaces, link) {
+      if (s->xdgSurface->surface->mapped == false)
+        continue;
 
-    struct wlr_render_texture_options renderTextureOptions = {
-        .dst_box = {.x = 10, .y = 10, .height = 500, .width = 500},
-        .texture = texture,
-        .transform = WL_OUTPUT_TRANSFORM_NORMAL,
-    };
-    wlr_render_pass_add_texture(renderPass, &renderTextureOptions);
+      struct wlr_texture *texture =
+          wlr_surface_get_texture(s->xdgSurface->surface);
+      if (texture == NULL)
+        continue;
 
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
+      struct wlr_render_texture_options renderTextureOptions = {
+          .dst_box = {.x = 10, .y = 10, .height = 500, .width = 500},
+          .texture = texture,
+          .transform = WL_OUTPUT_TRANSFORM_NORMAL,
+      };
+      wlr_render_pass_add_texture(renderPass, &renderTextureOptions);
 
-    wlr_surface_send_frame_done(s->xdgSurface->surface, &now);  
-}
+      struct timespec now;
+      clock_gettime(CLOCK_MONOTONIC, &now);
+
+      wlr_surface_send_frame_done(s->xdgSurface->surface, &now);
+    }
+  }
 
   // 5.
   wlr_render_pass_submit(renderPass);
@@ -71,6 +76,22 @@ void outputFrameHandler(struct wl_listener *listener, void *data) {
 
 void outputDestroyHandler(struct wl_listener *listener, void *data) {
   printf("-> remove an output\n");
+  /*
+    1. Clear listeners
+    2. Clear structure
+  */
+
+  // Variables
+  struct coR_output *coROutput =
+      wl_container_of(listener, coROutput, destroyListener);
+  
+  // 1.
+  wl_list_remove(&coROutput->frameListener.link);
+  wl_list_remove(&coROutput->destroyListener.link);
+
+  // 2.
+  free(coROutput);
+  printf("<- remove an output\n");
 }
 
 void newOutputHandler(struct wl_listener *listener, void *data) {
@@ -101,10 +122,10 @@ void newOutputHandler(struct wl_listener *listener, void *data) {
 
   // 2.
   coROutput->destroyListener.notify = outputDestroyHandler;
-  coROutput->frameListener.notify = outputFrameHandler;
-
-  wl_signal_add(&output->events.frame, &coROutput->frameListener);
   wl_signal_add(&output->events.destroy, &coROutput->destroyListener);
+
+  coROutput->frameListener.notify = outputFrameHandler;
+  wl_signal_add(&output->events.frame, &coROutput->frameListener);
 
   // 3.
   struct wlr_output_state state;
@@ -122,5 +143,3 @@ void newOutputHandler(struct wl_listener *listener, void *data) {
 
   printf("<- newOutput\n");
 }
-
-

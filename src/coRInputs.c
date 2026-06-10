@@ -7,6 +7,28 @@
 #include <wayland-util.h>
 #include <xkbcommon/xkbcommon.h>
 
+
+void destroyInputHandler(struct wl_listener *listener, void *data) {
+  printf("-> destroy Input\n");
+  /*
+    1. Listeners
+  */
+
+  // Variables
+  struct coR_input_d *coRInputD =
+      wl_container_of(listener, coRInputD, destroyListener);
+
+  // 1.
+  if (coRInputD->inputDevice->type == WLR_INPUT_DEVICE_KEYBOARD) {
+    wl_list_remove(&coRInputD->keyListener.link); // Crash si mis
+  }
+  wl_list_remove(&coRInputD->destroyListener.link);
+
+  free(coRInputD);
+  printf("<- destroy Input\n");
+}
+
+
 void newInputHandler(struct wl_listener *listener, void *data) {
   printf("-> new Input\n");
 
@@ -20,6 +42,11 @@ void newInputHandler(struct wl_listener *listener, void *data) {
   coRInputD->inputDevice = inputDevice;
   coRInputD->coRState = coRState;
 
+  // Listeners
+  coRInputD->destroyListener.notify = destroyInputHandler;
+  wl_signal_add(&coRInputD->inputDevice->events.destroy,
+                &coRInputD->destroyListener);
+
   switch (inputDevice->type) {
   case WLR_INPUT_DEVICE_KEYBOARD:
     printf("keyboard detected\n");
@@ -29,19 +56,19 @@ void newInputHandler(struct wl_listener *listener, void *data) {
       wlr_keyboard_set_keymap(keyboard, keyboard->keymap);
 
     } else {
-      /* Extrait de tinyWL: We need to prepare an XKB keymap and assign it to the keyboard. This
-       * assumes the defaults (e.g. layout = "us"). -> Changer en clavier fr avec xkb_rule_names*/
+      /* Extrait de tinyWL: We need to prepare an XKB keymap and assign it to
+       * the keyboard. This assumes the defaults (e.g. layout = "us"). ->
+       * Changer en clavier fr avec xkb_rule_names*/
       struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
       struct xkb_rule_names ruleNames = {.layout = "fr"};
-      struct xkb_keymap *keymap =
-          xkb_keymap_new_from_names(context, &ruleNames, XKB_KEYMAP_COMPILE_NO_FLAGS);
+      struct xkb_keymap *keymap = xkb_keymap_new_from_names(
+          context, &ruleNames, XKB_KEYMAP_COMPILE_NO_FLAGS);
       // --
 
       wlr_keyboard_set_keymap(keyboard, keymap);
       xkb_keymap_unref(keymap);
       xkb_context_unref(context);
       wlr_keyboard_set_repeat_info(keyboard, 25, 600);
-
     }
 
     // Set keyboard for a seat
@@ -56,6 +83,7 @@ void newInputHandler(struct wl_listener *listener, void *data) {
     break;
   }
 }
+
 
 void grabKeyboardBeginHandler(struct wl_listener *listener, void *data) {
   // printf("-> grabKeyboardBeginHandler\n");

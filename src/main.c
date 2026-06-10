@@ -8,6 +8,7 @@
 #include "wlr/backend/session.h"
 
 // Rendering
+#include <wayland-util.h>
 #include <wlr/render/allocator.h>
 
 // Compositor
@@ -52,15 +53,11 @@ int main() {
   struct wlr_backend *backend = wlr_backend_autocreate(eventLoop, NULL);
   if (!backend)
     exit(1);
-  // coRState.eventLoop = eventLoop;
   coRState.backend = backend;
 
   // 2.1
   coRState.session = wlr_session_create(eventLoop);
   coRState.seat = wlr_seat_create(display, "cearT0");
-  // struct wlr_backend *inputBackend
-  // =wlr_libinput_backend_create(coRState.session); Pas obligatoire + a
-  // fusionner avec l'autre backend
 
   // Set capabilities
   wlr_seat_set_capabilities(coRState.seat, WL_SEAT_CAPABILITY_KEYBOARD);
@@ -121,5 +118,15 @@ int main() {
   wl_display_run(display);
 
   // Clear
+  wl_list_remove(&coRState.newOutputListener.link);
+  wl_list_remove(&coRState.newSurfaceListener.link);
+  wl_list_remove(&coRState.newXdgSurfaceListener.link);
+  wl_list_remove(&coRState.newInputListener.link);
+
+  wlr_allocator_destroy(coRState.allocator);
+  wlr_renderer_destroy(coRState.renderer);
   wlr_seat_destroy(coRState.seat);
+  wlr_session_destroy(coRState.session);
+  wlr_backend_destroy(backend);
+  wl_display_destroy(display);
 }
