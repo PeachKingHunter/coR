@@ -11,6 +11,7 @@ struct coR_input_d {
 
   // Listeners
   struct wl_listener keyListener;
+  struct wl_listener modifierListener;
   struct wl_listener destroyListener;
 };
 

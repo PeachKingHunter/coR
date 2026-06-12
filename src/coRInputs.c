@@ -7,7 +7,6 @@
 #include <wayland-util.h>
 #include <xkbcommon/xkbcommon.h>
 
-
 void destroyInputHandler(struct wl_listener *listener, void *data) {
   printf("-> destroy Input\n");
   /*
@@ -28,6 +27,16 @@ void destroyInputHandler(struct wl_listener *listener, void *data) {
   printf("<- destroy Input\n");
 }
 
+void modifierKeyboardHandler(struct wl_listener *listener, void *data) {
+  printf("-> modifier keyboard\n");
+
+  // Variables
+  struct coR_input_d *coRInputD =
+      wl_container_of(listener, coRInputD, modifierListener);
+  struct wlr_keyboard *keyboard = wlr_keyboard_from_input_device(coRInputD->inputDevice);
+
+  wlr_seat_keyboard_notify_modifiers(coRInputD->coRState->seat, &keyboard->modifiers);
+}
 
 void newInputHandler(struct wl_listener *listener, void *data) {
   printf("-> new Input\n");
@@ -78,12 +87,14 @@ void newInputHandler(struct wl_listener *listener, void *data) {
     coRInputD->keyListener.notify = grabKeyboardBeginHandler;
     wl_signal_add(&keyboard->events.key, &coRInputD->keyListener);
 
+    coRInputD->modifierListener.notify = modifierKeyboardHandler;
+    wl_signal_add(&keyboard->events.modifiers, &coRInputD->modifierListener);
+
     // Temporaire, je changerais plus tard
     coRState->temp = coRInputD;
     break;
   }
 }
-
 
 void grabKeyboardBeginHandler(struct wl_listener *listener, void *data) {
   // printf("-> grabKeyboardBeginHandler\n");
