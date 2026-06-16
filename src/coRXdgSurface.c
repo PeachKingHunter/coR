@@ -25,10 +25,7 @@ static void mapXdgSurfaceHandler(struct wl_listener *listener, void *data) {
   struct coR_state *coRState = coRXdgSurface->coRState;
 
   // Obtien le clavier
-  struct coR_input_d *coRInputD = coRState->temp;
-  struct wlr_keyboard *keyboard =
-      // wlr_keyboard_from_input_device(coRInputD->inputDevice);
-      wlr_seat_get_keyboard(coRState->seat);
+  struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(coRState->seat);
 
   // Suprime l'ancien focus
   if (coRState->focusedSurface) {
@@ -43,6 +40,8 @@ static void mapXdgSurfaceHandler(struct wl_listener *listener, void *data) {
                                    keyboard->keycodes, keyboard->num_keycodes,
                                    &keyboard->modifiers);
   }
+  wlr_seat_pointer_notify_enter(coRState->seat, coRState->focusedSurface, 0, 0);
+
   printf("Focuse changed\n");
 }
 
@@ -53,9 +52,11 @@ static void unmapXdgSurfaceHandler(struct wl_listener *listener, void *data) {
       wl_container_of(listener, coRXdgSurface, mapListener);
   struct coR_state *coRState = coRXdgSurface->coRState;
 
+
   if (coRState->focusedSurface == coRXdgSurface->xdgSurface->surface) {
     coRState->focusedSurface = NULL;
     wlr_seat_keyboard_clear_focus(coRState->seat);
+    wlr_seat_pointer_clear_focus(coRState->seat);
   }
 }
 

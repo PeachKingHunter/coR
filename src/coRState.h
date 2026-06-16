@@ -24,7 +24,9 @@ struct coR_state {
   // For lib input of wlr
   struct wlr_session *session;
   struct wlr_seat *seat; // For peripherics
-  struct coR_input_d *temp;
+
+  struct wlr_cursor *cursor;
+  struct wlr_output_layout *outputLayout;
 
   // Listeners
   struct wl_listener newOutputListener;
@@ -32,7 +34,11 @@ struct coR_state {
   struct wl_listener newXdgSurfaceListener;
 
   struct wl_listener newInputListener;
-  struct wl_listener grabKeyboardBeginListener;
+  
+  struct wl_listener cursorButtonListener;
+  struct wl_listener cursorMotionListener;
+  struct wl_listener cursorMotionAbsoluteListener;
+  struct wl_listener cursorAxisListener;
 };
 
 #endif

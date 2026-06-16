@@ -1,6 +1,10 @@
 #include "coROutput.h"
 #include "src/coRInputs.h"
+#include "src/coRXdgSurface.h"
+#include <wayland-server-protocol.h>
 #include <wayland-util.h>
+#include <wlr/types/wlr_cursor.h>
+#include <wlr/types/wlr_output_layout.h>
 
 void outputFrameHandler(struct wl_listener *listener, void *data) {
   // printf("-> Render frame of an output\n");
@@ -37,11 +41,8 @@ void outputFrameHandler(struct wl_listener *listener, void *data) {
   wlr_render_pass_add_rect(renderPass, &renderRect);
 
   // 4.
-  // TODO: render surfaces
-  //   Récupérer leur texture (wlr_surface_get_texture).
-  //   Les dessiner à leur position (ex: wlr_render_pass_add_texture).
-
-  if (!wl_list_empty(&coRState->xdgSurfaces)) { // Pas sûre de l'utilité de se if
+  if (!wl_list_empty(
+          &coRState->xdgSurfaces)) { // Pas sûre de l'utilité de se if
     struct coR_xdg_surface *s;
     wl_list_for_each(s, &coRState->xdgSurfaces, link) {
       if (s->xdgSurface->surface->mapped == false)
@@ -52,8 +53,13 @@ void outputFrameHandler(struct wl_listener *listener, void *data) {
       if (texture == NULL)
         continue;
 
+      int posX = s->xdgSurface->surface->current.viewport.src.x;
+      int posY = s->xdgSurface->surface->current.viewport.src.y;
+      int sizeX = s->xdgSurface->surface->current.viewport.src.width;
+      int sizeY = s->xdgSurface->surface->current.viewport.src.height;
+
       struct wlr_render_texture_options renderTextureOptions = {
-          .dst_box = {.x = 10, .y = 10, .height = 500, .width = 500},
+          .dst_box = {.x = posX, .y = posY, .height = sizeY, .width = sizeX},
           .texture = texture,
           .transform = WL_OUTPUT_TRANSFORM_NORMAL,
       };
@@ -65,6 +71,15 @@ void outputFrameHandler(struct wl_listener *listener, void *data) {
       wlr_surface_send_frame_done(s->xdgSurface->surface, &now);
     }
   }
+
+  // Cursor
+  struct wlr_render_rect_options cursorRenderRect = {
+      .box = {.width = 10,
+              .height = 10,
+              .x = coRState->cursor->x,
+              .y = coRState->cursor->y},
+      .color = {.r = 1, .g = 0, .b = 0, .a = 1}};
+  wlr_render_pass_add_rect(renderPass, &cursorRenderRect);
 
   // 5.
   wlr_render_pass_submit(renderPass);
@@ -84,7 +99,7 @@ void outputDestroyHandler(struct wl_listener *listener, void *data) {
   // Variables
   struct coR_output *coROutput =
       wl_container_of(listener, coROutput, destroyListener);
-  
+
   // 1.
   wl_list_remove(&coROutput->frameListener.link);
   wl_list_remove(&coROutput->destroyListener.link);
@@ -140,6 +155,7 @@ void newOutputHandler(struct wl_listener *listener, void *data) {
   wlr_output_state_finish(&state);
 
   // 4. Layout for multiscreen, scale and other (todo later)
+  wlr_output_layout_add(coRState->outputLayout, output, 0, 0);
 
   printf("<- newOutput\n");
 }
