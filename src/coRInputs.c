@@ -1,13 +1,4 @@
 #include "coRInputs.h"
-#include "src/coRState.h"
-#include "src/coRXdgSurface.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <wayland-server-core.h>
-#include <wayland-server-protocol.h>
-#include <wayland-util.h>
-#include <wlr/types/wlr_cursor.h>
-#include <xkbcommon/xkbcommon.h>
 
 // ---- ## Keyboard ## ---- //
 void destroyInputHandler(struct wl_listener *listener, void *data) {
@@ -30,6 +21,7 @@ void destroyInputHandler(struct wl_listener *listener, void *data) {
   printf("<- destroy Input\n");
 }
 
+int superPressed = false;
 void keyKeyboardHandler(struct wl_listener *listener, void *data) {
   // printf("-> grabKeyboardBeginHandler\n");
 
@@ -43,6 +35,12 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
     printf("Pas de surface ayant le focus\n");
     return;
   }
+
+  if (event->keycode == 39 && superPressed == true) // touche M
+    exit(1);
+
+  if (event->keycode == 125) // touche "super"
+    superPressed = !superPressed;
 
   // Send event to focused surface
   if (coRKeyboardI->coRState->focusedSurface) {
@@ -90,33 +88,37 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
   double posX = coRState->cursor->x;
   double posY = coRState->cursor->y;
 
-  // Move
-  wlr_cursor_move(coRState->cursor, &event->pointer->base, event->delta_x,
-                  event->delta_y);
-  // printf("mouvement %f, %f\n", event->delta_x, event->delta_y);
+  // Move Cursor
+  wlr_cursor_move(coRState->cursor, &event->pointer->base, event->delta_x, event->delta_y);
+  wlr_scene_node_set_position(&coRState->cursorScene->node, posX, posY);
 
-  // Pour toutes les surfaces
-  struct coR_xdg_surface *coRXdgSurfaceTemp;
-  wl_list_for_each(coRXdgSurfaceTemp, &coRState->xdgSurfaces, link) {
-    // Récup celle dont on est dedans
-    double sX, sY;
-    struct wlr_surface *surface = wlr_xdg_surface_surface_at(
-        coRXdgSurfaceTemp->xdgSurface, posX, posY, &sX, &sY);
+  // Detecte la surface en dessous du curseur
+  wlr_scene_node_set_enabled(&coRState->cursorScene->node, false);
+  double sX, sY;
+  struct wlr_scene_node *node =
+      wlr_scene_node_at(&coRState->scene->tree.node, posX, posY, &sX, &sY);
+  wlr_scene_node_set_enabled(&coRState->cursorScene->node, true);
 
-    // Si elle existe
-    if (surface) {
-      // Si le focus n'est pas dessus
-      if (coRState->focusedSurface != surface) {
-        printf("enter surface\n");
-        wlr_seat_pointer_notify_enter(coRState->seat, surface, sX, sY);
-        // wlr_cursor_set_surface(coRState->cursor, surface, posX, posY);
-        coRState->focusedSurface = surface;
-      }
+  // Si aucune surface sous le curseur
+  if (node == NULL || node->type != WLR_SCENE_NODE_BUFFER)
+    return;
 
-      // Bouge le pointeur physique dedans
-      wlr_seat_pointer_notify_motion(coRState->seat, event->time_msec, sX, sY);
-      break; // Fin de la recherche quand on à trouver
-    }
+  struct wlr_scene_buffer *scene_buffer = wlr_scene_buffer_from_node(node);
+  struct wlr_scene_surface *scene_surface =
+      wlr_scene_surface_try_from_buffer(scene_buffer);
+
+  // Si pas réussi à l'obtenir
+  if (!scene_surface)
+    return;
+
+  struct wlr_surface *surface = scene_surface->surface;
+  if (surface) {
+    // Si le focus n'est pas dessus
+    if (coRState->focusedSurface != surface)
+      inputsChangeSurfaceToFocus(coRState, surface, sX, sY);
+
+    // Bouge le pointeur physique dedans
+    wlr_seat_pointer_notify_motion(coRState->seat, event->time_msec, sX, sY);
   }
 
   // Retire le focus si il n'y à pas de surface à focus
@@ -129,8 +131,6 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
 }
 
 void cursorMotionAbsoluteHandler(struct wl_listener *listener, void *data) {
-  // printf("-> motionAbsoluteCursor\n");
-
   // Variables
   struct coR_state *coRState =
       wl_container_of(listener, coRState, cursorMotionAbsoluteListener);
@@ -141,27 +141,35 @@ void cursorMotionAbsoluteHandler(struct wl_listener *listener, void *data) {
   // Move Cursor
   wlr_cursor_warp_absolute(coRState->cursor, &event->pointer->base, event->x,
                            event->y);
+  wlr_scene_node_set_position(&coRState->cursorScene->node, posX, posY);
 
-  // Pour toutes les surfaces
-  struct coR_xdg_surface *coRXdgSurfaceTemp;
-  wl_list_for_each(coRXdgSurfaceTemp, &coRState->xdgSurfaces, link) {
-    // Récup celle dont on est dedans
-    double sX, sY;
-    struct wlr_surface *surface = wlr_xdg_surface_surface_at(
-        coRXdgSurfaceTemp->xdgSurface, posX, posY, &sX, &sY);
+  // Detecte la surface en dessous du curseur
+  wlr_scene_node_set_enabled(&coRState->cursorScene->node, false);
+  double sX, sY;
+  struct wlr_scene_node *node =
+      wlr_scene_node_at(&coRState->scene->tree.node, posX, posY, &sX, &sY);
+  wlr_scene_node_set_enabled(&coRState->cursorScene->node, true);
 
-    if (surface) {
-      // Si le focus n'est pas dessus
-      if (coRState->focusedSurface != surface) {
-        wlr_seat_pointer_notify_enter(coRState->seat, surface, sX, sY);
-        // wlr_cursor_set_surface(coRState->cursor, surface, posX, posY);
-        coRState->focusedSurface = surface;
-      }
+  // Si aucune surface sous le curseur
+  if (node == NULL || node->type != WLR_SCENE_NODE_BUFFER)
+    return;
 
-      // Bouge le pointeur physique dans la surface
-      wlr_seat_pointer_notify_motion(coRState->seat, event->time_msec, sX, sY);
-      break; // Fin de la recherche quand on à trouver
-    }
+  struct wlr_scene_buffer *scene_buffer = wlr_scene_buffer_from_node(node);
+  struct wlr_scene_surface *scene_surface =
+      wlr_scene_surface_try_from_buffer(scene_buffer);
+
+  // Si pas réussi à l'obtenir
+  if (!scene_surface)
+    return;
+
+  struct wlr_surface *surface = scene_surface->surface;
+  if (surface) {
+    // Si le focus n'est pas dessus
+    if (coRState->focusedSurface != surface)
+      inputsChangeSurfaceToFocus(coRState, surface, sX, sY);
+
+    // Bouge le pointeur physique dedans
+    wlr_seat_pointer_notify_motion(coRState->seat, event->time_msec, sX, sY);
   }
 
   // Retire le focus si il n'y à pas de surface à focus
@@ -249,4 +257,30 @@ void newInputHandler(struct wl_listener *listener, void *data) {
     wlr_cursor_attach_input_device(coRState->cursor, inputDevice);
     break;
   }
+}
+
+// Change the surface that is focused by input-devices
+void inputsChangeSurfaceToFocus(struct coR_state *coRState,
+                                struct wlr_surface *surface, int cursorX,
+                                int cursorY) {
+  // Obtien le clavier
+  struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(coRState->seat);
+
+  // Suprime l'ancien focus
+  if (coRState->focusedSurface) {
+    wlr_seat_keyboard_clear_focus(coRState->seat);
+    wlr_seat_pointer_clear_focus(coRState->seat);
+  }
+
+  // Change focus
+  coRState->focusedSurface = surface;
+
+  if (keyboard) {
+    wlr_seat_keyboard_notify_enter(coRState->seat, coRState->focusedSurface,
+                                   keyboard->keycodes, keyboard->num_keycodes,
+                                   &keyboard->modifiers);
+  }
+  wlr_seat_pointer_notify_enter(coRState->seat, coRState->focusedSurface, 0, 0);
+
+  printf("Focus changed\n");
 }

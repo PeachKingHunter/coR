@@ -6,9 +6,8 @@
 
 #include "coRInputs.h"
 
-//
+// Input managing
 #include "wlr/backend/session.h"
-
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_seat.h>
 
@@ -66,7 +65,8 @@ int main() {
   coRState.seat = wlr_seat_create(display, "cearT0");
 
   // Set capabilities
-  wlr_seat_set_capabilities(coRState.seat, WL_SEAT_CAPABILITY_KEYBOARD | WL_SEAT_CAPABILITY_POINTER);
+  wlr_seat_set_capabilities(coRState.seat, WL_SEAT_CAPABILITY_KEYBOARD |
+                                               WL_SEAT_CAPABILITY_POINTER);
 
   // 2.5.
   coRState.renderer = wlr_renderer_autocreate(backend);
@@ -87,10 +87,20 @@ int main() {
 
   wl_list_init(&coRState.xdgSurfaces); // Liste of surfaces
 
-  // Oui Oui Curseur
+  // Curseur
   coRState.cursor = wlr_cursor_create();
   coRState.outputLayout = wlr_output_layout_create(display);
   wlr_cursor_attach_output_layout(coRState.cursor, coRState.outputLayout);
+
+  // Scene root for surface position
+  coRState.scene = wlr_scene_create();
+  coRState.sceneLayout =
+      wlr_scene_attach_output_layout(coRState.scene, coRState.outputLayout);
+
+  // Cursor Rect for render
+  float color[4] = {1, 0, 0, 1};
+  coRState.cursorScene =
+      wlr_scene_rect_create(&coRState.scene->tree, 10, 10, color);
 
   // 3.
   coRState.newOutputListener.notify = newOutputHandler;
@@ -106,13 +116,16 @@ int main() {
   wl_signal_add(&backend->events.new_input, &coRState.newInputListener);
 
   coRState.cursorButtonListener.notify = cursorButtonHandler;
-  wl_signal_add(&coRState.cursor->events.button, &coRState.cursorButtonListener);
+  wl_signal_add(&coRState.cursor->events.button,
+                &coRState.cursorButtonListener);
 
   coRState.cursorMotionListener.notify = cursorMotionHandler;
-  wl_signal_add(&coRState.cursor->events.motion, &coRState.cursorMotionListener);
+  wl_signal_add(&coRState.cursor->events.motion,
+                &coRState.cursorMotionListener);
 
   coRState.cursorMotionAbsoluteListener.notify = cursorMotionAbsoluteHandler;
-  wl_signal_add(&coRState.cursor->events.motion_absolute, &coRState.cursorMotionAbsoluteListener);
+  wl_signal_add(&coRState.cursor->events.motion_absolute,
+                &coRState.cursorMotionAbsoluteListener);
   coRState.cursorAxisListener.notify = cursorAxisHandler;
   wl_signal_add(&coRState.cursor->events.axis, &coRState.cursorAxisListener);
 
@@ -130,9 +143,9 @@ int main() {
   if (fork() == 0) {
     // execlp("sh", "sh", "-c", "kitty", (char *)NULL);
     // execlp("kitty", "kitty", (char *)NULL);
-    execlp("dolphin", "dolphin", (char *)NULL);
+    // execlp("dolphin", "dolphin", (char *)NULL);
     // execlp("weston-simple-shm", "weston-simple-shm", NULL);
-    // execlp("weston-terminal", "weston-terminal", NULL);
+    execlp("weston-terminal", "weston-terminal", NULL);
   }
   wlr_log(WLR_INFO, "Running Wayland compositor on WAYLAND_DISPLAY=%s", socket);
 
@@ -145,6 +158,7 @@ int main() {
   wl_list_remove(&coRState.newXdgSurfaceListener.link);
   wl_list_remove(&coRState.newInputListener.link);
 
+  wlr_scene_node_destroy(&coRState.scene->tree.node);
   wlr_allocator_destroy(coRState.allocator);
   wlr_renderer_destroy(coRState.renderer);
   wlr_seat_destroy(coRState.seat);

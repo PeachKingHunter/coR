@@ -1,9 +1,12 @@
 #ifndef coRInputs_H
 #define coRInputs_H
 
-#include "coRState.h"
+// Wlroot
+#include <wlr/types/wlr_cursor.h>
 #include "wlr/backend/libinput.h"
-#include <wayland-server-core.h>
+
+// My Lib
+#include "coRState.h"
 
 struct coR_keyboard_input {
   struct wlr_input_device *inputDevice;
@@ -26,7 +29,10 @@ struct coR_pointer_input {
   struct wl_listener axisListener;
 };
 
+void inputsChangeSurfaceToFocus(struct coR_state *coRState,
+                                struct wlr_surface *surface, int cursorX, int cursorY);
 void newInputHandler(struct wl_listener *listener, void *data);
+
 void keyKeyboardHandler(struct wl_listener *listener, void *data);
 
 void cursorButtonHandler(struct wl_listener *listener, void *data);

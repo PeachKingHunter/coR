@@ -1,7 +1,5 @@
 #include "coRXdgSurface.h"
-#include "coRState.h"
-#include <stdio.h>
-#include <wayland-util.h>
+
 
 static void commitXdgSurfaceHandler(struct wl_listener *listener, void *data) {
   // printf("-> commit XdgSurface\n");
@@ -24,25 +22,8 @@ static void mapXdgSurfaceHandler(struct wl_listener *listener, void *data) {
       wl_container_of(listener, coRXdgSurface, mapListener);
   struct coR_state *coRState = coRXdgSurface->coRState;
 
-  // Obtien le clavier
-  struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(coRState->seat);
-
-  // Suprime l'ancien focus
-  if (coRState->focusedSurface) {
-    wlr_seat_keyboard_clear_focus(coRState->seat);
-  }
-
-  // Change focus
-  coRState->focusedSurface = coRXdgSurface->xdgSurface->surface;
-
-  if (keyboard) {
-    wlr_seat_keyboard_notify_enter(coRState->seat, coRState->focusedSurface,
-                                   keyboard->keycodes, keyboard->num_keycodes,
-                                   &keyboard->modifiers);
-  }
-  wlr_seat_pointer_notify_enter(coRState->seat, coRState->focusedSurface, 0, 0);
-
-  printf("Focuse changed\n");
+  inputsChangeSurfaceToFocus(coRState, coRXdgSurface->xdgSurface->surface, 0,
+                             0);
 }
 
 static void unmapXdgSurfaceHandler(struct wl_listener *listener, void *data) {
@@ -51,7 +32,6 @@ static void unmapXdgSurfaceHandler(struct wl_listener *listener, void *data) {
   struct coR_xdg_surface *coRXdgSurface =
       wl_container_of(listener, coRXdgSurface, mapListener);
   struct coR_state *coRState = coRXdgSurface->coRState;
-
 
   if (coRState->focusedSurface == coRXdgSurface->xdgSurface->surface) {
     coRState->focusedSurface = NULL;
@@ -117,10 +97,15 @@ void newXdgSurfaceHandler(struct wl_listener *listener, void *data) {
   coRXdgSurface->xdgSurface = xdgSurface;
   coRXdgSurface->coRState = coRState;
 
-  wl_list_insert(&coRState->xdgSurfaces, &coRXdgSurface->link);
-  printf("-> Surface saved\n");
   // 3.
+  wl_list_insert(&coRState->xdgSurfaces, &coRXdgSurface->link);
+  struct wlr_scene_tree *sceneTree =
+      wlr_scene_xdg_surface_create(&coRState->scene->tree, xdgSurface);
+  sceneTree->node.data = xdgSurface;
+  wlr_scene_node_place_below(&sceneTree->node, &coRState->cursorScene->node);
+  printf("-> Surface saved\n");
 
+  wlr_scene_node_set_position(&sceneTree->node, 50, 10);
   // 4.
   coRXdgSurface->mapListener.notify = mapXdgSurfaceHandler;
   wl_signal_add(&xdgSurface->surface->events.map, &coRXdgSurface->mapListener);

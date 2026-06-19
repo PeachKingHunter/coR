@@ -2,13 +2,10 @@
 #define CoRXdgSurface_H
 
 #include "coRInputs.h"
-#include "coRState.h"
 
 // wlroot
 #include <wlr/types/wlr_xdg_shell.h>
-
-// LibC
-#include <stdlib.h>
+#include <wayland-util.h>
 
 // Struture
 struct coR_xdg_surface {
