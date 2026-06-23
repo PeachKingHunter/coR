@@ -17,7 +17,7 @@ struct coR_state {
 
   // For surfaces
   struct wlr_compositor *compositor;
-  struct wl_list xdgSurfaces;
+  struct wl_list xdgTopLevels;
   struct wlr_surface *focusedSurface;
   struct wlr_scene *scene;
   struct wlr_scene_output_layout *sceneLayout;
@@ -37,7 +37,7 @@ struct coR_state {
   // Listeners
   struct wl_listener newOutputListener;
   struct wl_listener newSurfaceListener;
-  struct wl_listener newXdgSurfaceListener;
+  struct wl_listener newXdgTopLevelListener;
 
   struct wl_listener newInputListener;
   

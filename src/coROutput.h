@@ -5,7 +5,7 @@
 
 // My lib
 #include "coRState.h"
-#include "coRXdgSurface.h"
+#include "coRXdgTopLevel.h"
 
 // wlroot
 #include <wayland-server-core.h>

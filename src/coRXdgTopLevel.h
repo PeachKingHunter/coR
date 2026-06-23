@@ -8,8 +8,8 @@
 #include <wayland-util.h>
 
 // Struture
-struct coR_xdg_surface {
-  struct wlr_xdg_surface *xdgSurface;
+struct coR_xdg_toplevel {
+  struct wlr_xdg_toplevel *xdgTopLevel;
   struct coR_state *coRState;
 
   // Listeners
@@ -23,10 +23,6 @@ struct coR_xdg_surface {
 };
 
 // Methods
-// static void mapXdgSurfaceHandler(struct wl_listener *listener, void *data);
-// static void unmapXdgSurfaceHandler(struct wl_listener *listener, void *data);
-// static void destroyXdgSurfaceHandler(struct wl_listener *listener, void
-// *data);
-void newXdgSurfaceHandler(struct wl_listener *listener, void *data);
+void newXdgTopLevelHandler(struct wl_listener *listener, void *data);
 
 #endif

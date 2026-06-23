@@ -11,7 +11,7 @@ executable(
     'src/coRState.c',
     'src/coROutput.c',
     'src/coRSurface.c',
-    'src/coRXdgSurface.c',
+    'src/coRXdgTopLevel.c',
     'src/coRInputs.c',
     dependencies: [wayland_server, wlroots, xkbcommon]
 )

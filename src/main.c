@@ -2,7 +2,7 @@
 #include "coROutput.h"
 #include "coRState.h"
 #include "coRSurface.h"
-#include "coRXdgSurface.h"
+#include "coRXdgTopLevel.h"
 
 #include "coRInputs.h"
 
@@ -85,7 +85,7 @@ int main() {
   if (xdgShell == NULL || shm == NULL)
     exit(1);
 
-  wl_list_init(&coRState.xdgSurfaces); // Liste of surfaces
+  wl_list_init(&coRState.xdgTopLevels); // Liste of surfaces
 
   // Curseur
   coRState.cursor = wlr_cursor_create();
@@ -109,8 +109,8 @@ int main() {
   coRState.newSurfaceListener.notify = newSurfaceHandler;
   wl_signal_add(&compositor->events.new_surface, &coRState.newSurfaceListener);
 
-  coRState.newXdgSurfaceListener.notify = newXdgSurfaceHandler;
-  wl_signal_add(&xdgShell->events.new_surface, &coRState.newXdgSurfaceListener);
+  coRState.newXdgTopLevelListener.notify = newXdgTopLevelHandler;
+  wl_signal_add(&xdgShell->events.new_toplevel, &coRState.newXdgTopLevelListener);
 
   coRState.newInputListener.notify = newInputHandler;
   wl_signal_add(&backend->events.new_input, &coRState.newInputListener);
@@ -155,7 +155,7 @@ int main() {
   // Clear
   wl_list_remove(&coRState.newOutputListener.link);
   wl_list_remove(&coRState.newSurfaceListener.link);
-  wl_list_remove(&coRState.newXdgSurfaceListener.link);
+  wl_list_remove(&coRState.newXdgTopLevelListener.link);
   wl_list_remove(&coRState.newInputListener.link);
 
   wlr_scene_node_destroy(&coRState.scene->tree.node);
