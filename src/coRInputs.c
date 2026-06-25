@@ -1,4 +1,14 @@
 #include "coRInputs.h"
+#include "src/coRState.h"
+#include "src/coRXdgTopLevel.h"
+#include <stdio.h>
+#include <wayland-server-protocol.h>
+
+// Global variables
+int superPressed = false;
+struct coR_xdg_toplevel *resizingTopLevel = NULL;
+int startResizingPosX, startResizingPosY;
+int startResizingWidth, startResizingHeight;
 
 // ---- ## Keyboard ## ---- //
 void destroyInputHandler(struct wl_listener *listener, void *data) {
@@ -21,7 +31,6 @@ void destroyInputHandler(struct wl_listener *listener, void *data) {
   printf("<- destroy Input\n");
 }
 
-int superPressed = false;
 void keyKeyboardHandler(struct wl_listener *listener, void *data) {
   // Variables
   struct coR_keyboard_input *coRKeyboardI =
@@ -30,7 +39,8 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
   printf("Touche: %d\n", event->keycode);
 
   // Raccourci spéciaux
-  if (superPressed == true && event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+  // if (superPressed == true && event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+  if (event->state == WL_KEYBOARD_KEY_STATE_PRESSED) { // Temp without superKey
     if (event->keycode == 39) { // touche M
       exit(1);
       return;
@@ -83,6 +93,74 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
       wl_container_of(listener, coRState, cursorButtonListener);
   struct wlr_pointer_button_event *event = data;
 
+  // Active/Désactive le resize d'un toplevel avec click droit + SUPER
+  // if (superPressed && event->button == 273) {
+  if (event->button == 273) { // Temp just right click
+    if (event->state == WL_POINTER_BUTTON_STATE_PRESSED) {
+      resizingTopLevel = coRState->focusedSurface->data;
+      startResizingPosX = coRState->cursor->x;
+      startResizingPosY = coRState->cursor->y;
+      struct coR_xdg_toplevel *focusedTopLevel = coRState->focusedSurface->data;
+      startResizingWidth = focusedTopLevel->xdgTopLevel->current.width;
+      startResizingHeight = focusedTopLevel->xdgTopLevel->current.height;
+    } else if (event->state == WL_POINTER_BUTTON_STATE_RELEASED) {
+      // TODO: create new free Area (1 or 2 which the resize)
+      // Variables
+      int endResizingPosX = coRState->cursor->x;
+      int endResizingPosY = coRState->cursor->y;
+
+      int deltaX = startResizingPosX - endResizingPosX;
+      int deltaY = startResizingPosY - endResizingPosY;
+
+      int posX = resizingTopLevel->posX;
+      int posY = resizingTopLevel->posY;
+      int sizeX = resizingTopLevel->xdgTopLevel->current.width;
+      int sizeY = resizingTopLevel->xdgTopLevel->current.height;
+
+      // Create right Free Area
+      if (deltaX > 0) {
+        struct free_area *freeArea = malloc(sizeof(struct free_area));
+        if (freeArea == NULL)
+          exit(1);
+        freeArea->posX = posX + sizeX;
+        freeArea->posY = posY;
+        freeArea->sizeX = deltaX;
+        freeArea->sizeY = sizeY;
+        wl_list_insert(&coRState->freeAreas, &freeArea->link);
+      }
+
+      // Create down Free Area
+      if (deltaY > 0) {
+        struct free_area *freeArea = malloc(sizeof(struct free_area));
+        if (freeArea == NULL)
+          exit(1);
+        freeArea->posX = posX;
+        freeArea->posY = posY + sizeY;
+        freeArea->sizeX = sizeX;
+        freeArea->sizeY = deltaY;
+        wl_list_insert(&coRState->freeAreas, &freeArea->link);
+      }
+
+      // Create down right Free Area
+      if (deltaY > 0) {
+        struct free_area *freeArea = malloc(sizeof(struct free_area));
+        if (freeArea == NULL)
+          exit(1);
+        freeArea->posX = posX + sizeX;
+        freeArea->posY = posY + sizeY;
+        freeArea->sizeX = deltaX;
+        freeArea->sizeY = deltaY;
+        wl_list_insert(&coRState->freeAreas, &freeArea->link);
+      }
+
+      // TODO: enable move Surfaces
+      // Split existant surface / take free Area
+
+      resizingTopLevel = NULL;
+      return;
+    }
+  }
+
   // Envoie au client le clique
   wlr_seat_pointer_notify_button(coRState->seat, event->time_msec,
                                  event->button, event->state);
@@ -103,6 +181,16 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
   wlr_cursor_move(coRState->cursor, &event->pointer->base, event->delta_x,
                   event->delta_y);
   wlr_scene_node_set_position(&coRState->cursorScene->node, posX, posY);
+
+  // Resize toplevel with cursor motion
+  if (resizingTopLevel != NULL) {
+    int deltaX = coRState->cursor->x - startResizingPosX;
+    int deltaY = coRState->cursor->y - startResizingPosY;
+
+    wlr_xdg_toplevel_set_size(resizingTopLevel->xdgTopLevel,
+                              startResizingWidth + deltaX,
+                              startResizingHeight + deltaY);
+  }
 
   // Detecte la surface en dessous du curseur
   wlr_scene_node_set_enabled(&coRState->cursorScene->node, false);

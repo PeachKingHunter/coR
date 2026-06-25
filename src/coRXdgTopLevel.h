@@ -15,6 +15,8 @@ struct coR_xdg_toplevel {
   // Surface arrangement
   struct coR_xdg_toplevel *shrunkedTopLevel;
   struct coR_xdg_toplevel *shrunkerTopLevel;
+  int posX;
+  int posY;
 
   // Listeners
   struct wl_listener mapListener;

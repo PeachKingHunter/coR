@@ -42,6 +42,8 @@ static void commitXdgTopLevelHandler(struct wl_listener *listener, void *data) {
 
     wlr_scene_node_set_position(&topLevelSceneTree->node, freeArea->posX,
     freeArea->posY);
+    coRXdgTopLevel->posX = freeArea->posX;
+    coRXdgTopLevel->posY = freeArea->posY;
     return;
   }
 
@@ -77,6 +79,8 @@ static void commitXdgTopLevelHandler(struct wl_listener *listener, void *data) {
     // Position & size de la nouvelle surface
     wlr_scene_node_set_position(&topLevelSceneTree->node, posX + width / 2,
                                 posY);
+    coRXdgTopLevel->posX = coRXdgTopLevelAutre->posX + width / 2;
+    coRXdgTopLevel->posY = coRXdgTopLevelAutre->posY;
     wlr_xdg_toplevel_set_size(coRXdgTopLevel->xdgTopLevel, width / 2, height);
 
     // Resize the parent surface
@@ -88,6 +92,8 @@ static void commitXdgTopLevelHandler(struct wl_listener *listener, void *data) {
     // Position & size de la nouvelle surface
     wlr_scene_node_set_position(&topLevelSceneTree->node, posX,
                                 posY + height / 2);
+    coRXdgTopLevel->posX = coRXdgTopLevelAutre->posX;
+    coRXdgTopLevel->posY = coRXdgTopLevelAutre->posY + height / 2;
     wlr_xdg_toplevel_set_size(coRXdgTopLevel->xdgTopLevel, width, height / 2);
 
     // Resize the parent surface
@@ -179,6 +185,8 @@ void newXdgTopLevelHandler(struct wl_listener *listener, void *data) {
   coRXdgTopLevel->coRState = coRState;
   coRXdgTopLevel->shrunkedTopLevel = NULL;
   coRXdgTopLevel->shrunkerTopLevel = NULL;
+  coRXdgTopLevel->posX = 0;
+  coRXdgTopLevel->posY = 0;
 
   // 2.
   wl_list_insert(&coRState->xdgTopLevels, &coRXdgTopLevel->link);
