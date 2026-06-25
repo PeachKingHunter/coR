@@ -97,6 +97,10 @@ void newOutputHandler(struct wl_listener *listener, void *data) {
   wlr_scene_output_layout_add_output(coRState->sceneLayout, outputLayoutOutput,
                                      sceneOutput);
 
+  // Give Temp focus
+  if (coRState->focusedOutput == NULL)
+    coRState->focusedOutput = output;
+
   // Render and commit the output
   wlr_scene_output_commit(sceneOutput, NULL);
 

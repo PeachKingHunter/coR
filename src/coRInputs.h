@@ -4,9 +4,14 @@
 // Wlroot
 #include <wlr/types/wlr_cursor.h>
 #include "wlr/backend/libinput.h"
+#include "wayland-server-protocol.h"
 
 // My Lib
 #include "coRState.h"
+
+// Lib c
+#include <unistd.h>
+#include <stdio.h>
 
 struct coR_keyboard_input {
   struct wlr_input_device *inputDevice;

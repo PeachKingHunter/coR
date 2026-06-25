@@ -12,6 +12,10 @@ struct coR_xdg_toplevel {
   struct wlr_xdg_toplevel *xdgTopLevel;
   struct coR_state *coRState;
 
+  // Surface arrangement
+  struct coR_xdg_toplevel *shrunkedTopLevel;
+  struct coR_xdg_toplevel *shrunkerTopLevel;
+
   // Listeners
   struct wl_listener mapListener;
   struct wl_listener unMapListener;

@@ -8,6 +8,7 @@
 
 // Input managing
 #include "wlr/backend/session.h"
+#include <stdlib.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_seat.h>
 
@@ -87,6 +88,37 @@ int main() {
 
   wl_list_init(&coRState.xdgTopLevels); // Liste of surfaces
 
+  // List of free area for new surfaces
+  // A default surface on the whole screen
+  wl_list_init(&coRState.freeAreas);
+  struct free_area *freeArea = malloc(sizeof(struct free_area));
+  if (freeArea == NULL)
+    exit(1);
+  freeArea->posX = 0;
+  freeArea->posY = 0;
+  freeArea->sizeX = 0; // Auto Screen's size
+  freeArea->sizeY = 0; // Auto Screen's size
+  wl_list_insert(&coRState.freeAreas, &freeArea->link);
+
+  // Test of predef position for surfaces
+  // struct free_area *freeArea = malloc(sizeof(struct free_area));
+  // if (freeArea == NULL)
+  //   exit(1);
+  // freeArea->posX = 300;
+  // freeArea->posY = 40;
+  // freeArea->sizeX = 300; // Auto Screen's size
+  // freeArea->sizeY = 200; // Auto Screen's size
+  // wl_list_insert(&coRState.freeAreas, &freeArea->link);
+  //
+  // freeArea = malloc(sizeof(struct free_area));
+  // if (freeArea == NULL)
+  //   exit(1);
+  // freeArea->posX = 52;
+  // freeArea->posY = 10;
+  // freeArea->sizeX = 200; // Auto Screen's size
+  // freeArea->sizeY = 500; // Auto Screen's size
+  // wl_list_insert(&coRState.freeAreas, &freeArea->link);
+
   // Curseur
   coRState.cursor = wlr_cursor_create();
   coRState.outputLayout = wlr_output_layout_create(display);
@@ -110,7 +142,8 @@ int main() {
   wl_signal_add(&compositor->events.new_surface, &coRState.newSurfaceListener);
 
   coRState.newXdgTopLevelListener.notify = newXdgTopLevelHandler;
-  wl_signal_add(&xdgShell->events.new_toplevel, &coRState.newXdgTopLevelListener);
+  wl_signal_add(&xdgShell->events.new_toplevel,
+                &coRState.newXdgTopLevelListener);
 
   coRState.newInputListener.notify = newInputHandler;
   wl_signal_add(&backend->events.new_input, &coRState.newInputListener);

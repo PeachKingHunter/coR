@@ -6,6 +6,7 @@
 #include "wlr/types/wlr_seat.h"
 
 // Surface moving & resize (scene)
+#include <wayland-util.h>
 #include <wlr/types/wlr_scene.h>
 
 // Structure
@@ -18,9 +19,15 @@ struct coR_state {
   // For surfaces
   struct wlr_compositor *compositor;
   struct wl_list xdgTopLevels;
-  struct wlr_surface *focusedSurface;
   struct wlr_scene *scene;
   struct wlr_scene_output_layout *sceneLayout;
+
+  // Placement in output
+  struct wl_list freeAreas;
+
+  // Focus
+  struct wlr_surface *focusedSurface;
+  struct wlr_output *focusedOutput;
 
   // Components for render outputs
   struct wlr_renderer *renderer;
@@ -45,6 +52,15 @@ struct coR_state {
   struct wl_listener cursorMotionListener;
   struct wl_listener cursorMotionAbsoluteListener;
   struct wl_listener cursorAxisListener;
+};
+
+struct free_area {
+  int posX;
+  int posY;
+  int sizeX;
+  int sizeY;
+
+  struct wl_list link;
 };
 
 #endif

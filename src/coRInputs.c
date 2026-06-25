@@ -23,24 +23,35 @@ void destroyInputHandler(struct wl_listener *listener, void *data) {
 
 int superPressed = false;
 void keyKeyboardHandler(struct wl_listener *listener, void *data) {
-  // printf("-> grabKeyboardBeginHandler\n");
-
+  // Variables
   struct coR_keyboard_input *coRKeyboardI =
       wl_container_of(listener, coRKeyboardI, keyListener);
   struct wlr_keyboard_key_event *event = data;
-  // printf("%d\n", event->keycode);
+  printf("Touche: %d\n", event->keycode);
+
+  // Raccourci spéciaux
+  if (superPressed == true && event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+    if (event->keycode == 39) { // touche M
+      exit(1);
+      return;
+    }
+
+    if (event->keycode == 30) { // touche Q
+      if (fork() == 0) {
+        execlp("weston-terminal", "weston-terminal", NULL);
+      }
+      return;
+    }
+  }
+
+  if (event->keycode == 125) // touche "super"
+    superPressed = !superPressed;
 
   // Vérifie si une surface à le focus
   if (!coRKeyboardI->coRState->focusedSurface) {
     printf("Pas de surface ayant le focus\n");
     return;
   }
-
-  if (event->keycode == 39 && superPressed == true) // touche M
-    exit(1);
-
-  if (event->keycode == 125) // touche "super"
-    superPressed = !superPressed;
 
   // Send event to focused surface
   if (coRKeyboardI->coRState->focusedSurface) {
@@ -89,7 +100,8 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
   double posY = coRState->cursor->y;
 
   // Move Cursor
-  wlr_cursor_move(coRState->cursor, &event->pointer->base, event->delta_x, event->delta_y);
+  wlr_cursor_move(coRState->cursor, &event->pointer->base, event->delta_x,
+                  event->delta_y);
   wlr_scene_node_set_position(&coRState->cursorScene->node, posX, posY);
 
   // Detecte la surface en dessous du curseur

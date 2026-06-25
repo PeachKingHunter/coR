@@ -1,14 +1,13 @@
 #ifndef CoROuput_H
 #define CoROuput_H
 
-
-
 // My lib
 #include "coRState.h"
 #include "coRXdgTopLevel.h"
 
 // wlroot
 #include <wayland-server-core.h>
+#include <wayland-util.h>
 #include <wlr/backend.h>
 #include <wlr/types/wlr_cursor.h>
 
