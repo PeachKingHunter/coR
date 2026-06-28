@@ -1,14 +1,20 @@
 #include "coRInputs.h"
 #include "src/coRState.h"
 #include "src/coRXdgTopLevel.h"
+#include <stdbool.h>
 #include <stdio.h>
 #include <wayland-server-protocol.h>
+#include <wayland-util.h>
 
 // Global variables
 int superPressed = false;
+
 struct coR_xdg_toplevel *resizingTopLevel = NULL;
 int startResizingPosX, startResizingPosY;
 int startResizingWidth, startResizingHeight;
+
+struct coR_xdg_toplevel *movingTopLevel = NULL;
+int startMovingPosX, startMovingPosY;
 
 // ---- ## Keyboard ## ---- //
 void destroyInputHandler(struct wl_listener *listener, void *data) {
@@ -23,7 +29,7 @@ void destroyInputHandler(struct wl_listener *listener, void *data) {
 
   // 1.
   if (coRKeyboardI->inputDevice->type == WLR_INPUT_DEVICE_KEYBOARD) {
-    wl_list_remove(&coRKeyboardI->keyListener.link); // Crash si mis
+    wl_list_remove(&coRKeyboardI->keyListener.link);
   }
   wl_list_remove(&coRKeyboardI->destroyListener.link);
 
@@ -39,8 +45,7 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
   printf("Touche: %d\n", event->keycode);
 
   // Raccourci spéciaux
-  // if (superPressed == true && event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-  if (event->state == WL_KEYBOARD_KEY_STATE_PRESSED) { // Temp without superKey
+  if (superPressed == true && event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
     if (event->keycode == 39) { // touche M
       exit(1);
       return;
@@ -56,6 +61,8 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
 
   if (event->keycode == 125) // touche "super"
     superPressed = !superPressed;
+
+  superPressed = true; // Temp for testing
 
   // Vérifie si une surface à le focus
   if (!coRKeyboardI->coRState->focusedSurface) {
@@ -94,8 +101,7 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
   struct wlr_pointer_button_event *event = data;
 
   // Active/Désactive le resize d'un toplevel avec click droit + SUPER
-  // if (superPressed && event->button == 273) {
-  if (event->button == 273) { // Temp just right click
+  if (superPressed && event->button == 273) {
     if (event->state == WL_POINTER_BUTTON_STATE_PRESSED) {
       resizingTopLevel = coRState->focusedSurface->data;
       startResizingPosX = coRState->cursor->x;
@@ -103,8 +109,9 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
       struct coR_xdg_toplevel *focusedTopLevel = coRState->focusedSurface->data;
       startResizingWidth = focusedTopLevel->xdgTopLevel->current.width;
       startResizingHeight = focusedTopLevel->xdgTopLevel->current.height;
+
     } else if (event->state == WL_POINTER_BUTTON_STATE_RELEASED) {
-      // TODO: create new free Area (1 or 2 which the resize)
+      // create new free Area (1 or 2 which the resize)
       // Variables
       int endResizingPosX = coRState->cursor->x;
       int endResizingPosY = coRState->cursor->y;
@@ -126,7 +133,11 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
         freeArea->posY = posY;
         freeArea->sizeX = deltaX;
         freeArea->sizeY = sizeY;
-        wl_list_insert(&coRState->freeAreas, &freeArea->link);
+        if (freeArea->sizeX > 0 && freeArea->sizeY > 0) {
+          wl_list_insert(&coRState->freeAreas, &freeArea->link);
+        } else {
+          free(freeArea);
+        }
       }
 
       // Create down Free Area
@@ -138,7 +149,11 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
         freeArea->posY = posY + sizeY;
         freeArea->sizeX = sizeX;
         freeArea->sizeY = deltaY;
-        wl_list_insert(&coRState->freeAreas, &freeArea->link);
+        if (freeArea->sizeX > 0 && freeArea->sizeY > 0) {
+          wl_list_insert(&coRState->freeAreas, &freeArea->link);
+        } else {
+          free(freeArea);
+        }
       }
 
       // Create down right Free Area
@@ -150,14 +165,40 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
         freeArea->posY = posY + sizeY;
         freeArea->sizeX = deltaX;
         freeArea->sizeY = deltaY;
-        wl_list_insert(&coRState->freeAreas, &freeArea->link);
+        if (freeArea->sizeX > 0 && freeArea->sizeY > 0) {
+          wl_list_insert(&coRState->freeAreas, &freeArea->link);
+        } else {
+          free(freeArea);
+        }
       }
 
+      // TODO: resize other surfaces if colision
+
       // TODO: enable move Surfaces
-      // Split existant surface / take free Area
 
       resizingTopLevel = NULL;
       return;
+    }
+  }
+
+  // Active/Désactive le déplacement d'un toplevel avec click left + SUPER
+  if (superPressed && event->button == 272) {
+    if (event->state == WL_POINTER_BUTTON_STATE_PRESSED) {
+      movingTopLevel = coRState->focusedSurface->data;
+      startMovingPosX = coRState->cursor->x;
+      startMovingPosY = coRState->cursor->y;
+
+    } else if (event->state == WL_POINTER_BUTTON_STATE_RELEASED) {
+      // TODO: Split existant surface
+      // or take free Area depending on what is underneath
+
+      // TODO: change toplevel posX & posY: Version temp
+      int deltaX = coRState->cursor->x - startMovingPosX;
+      int deltaY = coRState->cursor->y - startMovingPosY;
+      movingTopLevel->posX += deltaX;
+      movingTopLevel->posY += deltaY;
+
+      movingTopLevel = NULL;
     }
   }
 
@@ -187,9 +228,109 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
     int deltaX = coRState->cursor->x - startResizingPosX;
     int deltaY = coRState->cursor->y - startResizingPosY;
 
-    wlr_xdg_toplevel_set_size(resizingTopLevel->xdgTopLevel,
-                              startResizingWidth + deltaX,
-                              startResizingHeight + deltaY);
+    int newSizeX = startResizingWidth + deltaX;
+    int newSizeY = startResizingHeight + deltaY;
+
+    int currentSizeX = resizingTopLevel->xdgTopLevel->current.width;
+    int currentSizeY = resizingTopLevel->xdgTopLevel->current.height;
+
+    if (newSizeX > 0 && newSizeY > 0) {
+      // Change size of the surface
+      int canResize = true;
+      wlr_xdg_toplevel_set_size(resizingTopLevel->xdgTopLevel, newSizeX,
+                                newSizeY);
+
+      // Resize all others on which we exceed
+      struct coR_xdg_toplevel *tmpXdgTopLevel;
+      wl_list_for_each(tmpXdgTopLevel, &coRState->xdgTopLevels, link) {
+        // Skip himself
+        if (tmpXdgTopLevel == resizingTopLevel)
+          continue;
+
+        // TODO REMAKE THIS
+        int posX1 = resizingTopLevel->posX;
+        int sizeX1 = newSizeX;
+
+        int posX2 = tmpXdgTopLevel->posX;
+        int sizeX2 = tmpXdgTopLevel->xdgTopLevel->current.width;
+
+        int posY1 = resizingTopLevel->posY;
+        int sizeY1 = newSizeY;
+
+        int posY2 = tmpXdgTopLevel->posY;
+        int sizeY2 = tmpXdgTopLevel->xdgTopLevel->current.height;
+
+        // Test colisions seulement à droite et en bas
+        if (posX2 + sizeX2 <= posX1 || posY2 + sizeY2 <= posY1)
+          continue;
+
+        // Test colisions
+        if (!(posX1 + sizeX1 >= posX2 && posX1 <= posX2 + sizeX2 &&
+              posY1 + sizeY1 >= posY2 && posY1 <= posY2 + sizeY2))
+          continue;
+
+        // TODO: resize the other surface
+        printf("Should resize & move a surface\n");
+        int distX = abs(posX1 + sizeX1 + 1 - posX2);
+        int distY = abs(posY1 + sizeY1 + 1 - posY2);
+
+        // Resize l'axe dont on entre le moins dedans
+        struct wlr_scene_tree *sceneTree =
+            tmpXdgTopLevel->xdgTopLevel->base->data;
+        if (distX < distY) {
+          printf("distX: %d\n", distX);
+
+          int newWidth = tmpXdgTopLevel->xdgTopLevel->current.width - distX;
+          int newHeight = tmpXdgTopLevel->xdgTopLevel->current.height;
+
+          if (newWidth >= 100 && newHeight >= 100) {
+            tmpXdgTopLevel->posX += distX;
+            wlr_scene_node_set_position(&sceneTree->node, tmpXdgTopLevel->posX,
+                                        tmpXdgTopLevel->posY);
+            wlr_xdg_toplevel_set_size(tmpXdgTopLevel->xdgTopLevel, newWidth,
+                                      newHeight);
+          } else {
+            canResize = false;
+            break;
+          }
+
+        } else {
+          printf("distY: %d\n", distY);
+
+          int newWidth = tmpXdgTopLevel->xdgTopLevel->current.width;
+          int newHeight = tmpXdgTopLevel->xdgTopLevel->current.height - distY;
+
+          if (newWidth >= 100 && newHeight >= 100) {
+            tmpXdgTopLevel->posY += distY;
+            wlr_scene_node_set_position(&sceneTree->node, tmpXdgTopLevel->posX,
+                                        tmpXdgTopLevel->posY);
+            wlr_xdg_toplevel_set_size(tmpXdgTopLevel->xdgTopLevel, newWidth,
+                                      newHeight);
+          } else {
+            canResize = false;
+            break;
+          }
+        }
+      }
+
+      // UNDO the resize of the surface due to impossibility of changing size to
+      // an surface -> TODO: separate X and Y undo size
+      if (canResize == false &&
+          (newSizeX > currentSizeX || newSizeY > currentSizeY)) {
+        wlr_xdg_toplevel_set_size(resizingTopLevel->xdgTopLevel, currentSizeX,
+                                  currentSizeY);
+      }
+    }
+  }
+
+  // move toplevel with cursor motion
+  if (movingTopLevel != NULL) {
+    int deltaX = coRState->cursor->x - startMovingPosX;
+    int deltaY = coRState->cursor->y - startMovingPosY;
+
+    struct wlr_scene_tree *sceneTree = movingTopLevel->xdgTopLevel->base->data;
+    wlr_scene_node_set_position(&sceneTree->node, movingTopLevel->posX + deltaX,
+                                movingTopLevel->posY + deltaY);
   }
 
   // Detecte la surface en dessous du curseur

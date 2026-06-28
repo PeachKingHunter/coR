@@ -97,7 +97,7 @@ void newOutputHandler(struct wl_listener *listener, void *data) {
   wlr_scene_output_layout_add_output(coRState->sceneLayout, outputLayoutOutput,
                                      sceneOutput);
 
-  // Give Temp focus
+  // Give on start focus if no one as
   if (coRState->focusedOutput == NULL)
     coRState->focusedOutput = output;
 
