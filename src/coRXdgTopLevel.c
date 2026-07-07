@@ -41,7 +41,7 @@ static void commitXdgTopLevelHandler(struct wl_listener *listener, void *data) {
     wlr_xdg_toplevel_set_size(coRXdgTopLevel->xdgTopLevel, sizeX, sizeY);
 
     wlr_scene_node_set_position(&topLevelSceneTree->node, freeArea->posX,
-    freeArea->posY);
+                                freeArea->posY);
     coRXdgTopLevel->posX = freeArea->posX;
     coRXdgTopLevel->posY = freeArea->posY;
     return;
@@ -55,51 +55,10 @@ static void commitXdgTopLevelHandler(struct wl_listener *listener, void *data) {
     focusedSurface = xdgTopLevel->xdgTopLevel->base->surface;
   }
 
-  // Variables
+  // Split the focused surface and add our one
   struct coR_xdg_toplevel *coRXdgTopLevelAutre =
-      coRXdgTopLevel->coRState->focusedSurface->data;
-
-  struct wlr_scene_tree *topLevelSceneTreeAutre =
-      coRXdgTopLevelAutre->xdgTopLevel->base->data;
-
-  int posX = topLevelSceneTreeAutre->node.x;
-  int posY = topLevelSceneTreeAutre->node.y;
-
-  int width = coRXdgTopLevelAutre->xdgTopLevel->current.width;
-  int height = coRXdgTopLevelAutre->xdgTopLevel->current.height;
-
-  // Devient frère à celui découpé
-  coRXdgTopLevel->shrunkedTopLevel = coRXdgTopLevelAutre;
-  coRXdgTopLevelAutre->shrunkerTopLevel = coRXdgTopLevel;
-  wlr_scene_node_reparent(&topLevelSceneTree->node,
-                          topLevelSceneTreeAutre->node.parent);
-
-  if (width > height) {
-    // Ajout à droite ou gauche
-    // Position & size de la nouvelle surface
-    wlr_scene_node_set_position(&topLevelSceneTree->node, posX + width / 2,
-                                posY);
-    coRXdgTopLevel->posX = coRXdgTopLevelAutre->posX + width / 2;
-    coRXdgTopLevel->posY = coRXdgTopLevelAutre->posY;
-    wlr_xdg_toplevel_set_size(coRXdgTopLevel->xdgTopLevel, width / 2, height);
-
-    // Resize the parent surface
-    wlr_xdg_toplevel_set_size(coRXdgTopLevelAutre->xdgTopLevel, width / 2,
-                              height);
-
-  } else {
-    // Ajout en bas ou en haut
-    // Position & size de la nouvelle surface
-    wlr_scene_node_set_position(&topLevelSceneTree->node, posX,
-                                posY + height / 2);
-    coRXdgTopLevel->posX = coRXdgTopLevelAutre->posX;
-    coRXdgTopLevel->posY = coRXdgTopLevelAutre->posY + height / 2;
-    wlr_xdg_toplevel_set_size(coRXdgTopLevel->xdgTopLevel, width, height / 2);
-
-    // Resize the parent surface
-    wlr_xdg_toplevel_set_size(coRXdgTopLevelAutre->xdgTopLevel, width,
-                              height / 2);
-  }
+      focusedSurface->data;
+  splitXdgTopLevel(coRXdgTopLevelAutre, coRXdgTopLevel);
 }
 
 static void mapXdgTopLevelHandler(struct wl_listener *listener, void *data) {
@@ -227,3 +186,49 @@ void newXdgTopLevelHandler(struct wl_listener *listener, void *data) {
   4.Unmapped - Surface no longer has a buffer and should not be rendered
   5.Destroyed - Surface is being freed
 */
+
+void splitXdgTopLevel(struct coR_xdg_toplevel *toSplit,
+                      struct coR_xdg_toplevel *newXdgTopLevel) {
+  // Variables
+  struct wlr_scene_tree *topLevelSceneTreeToSplit =
+      toSplit->xdgTopLevel->base->data;
+  struct wlr_scene_tree *topLevelSceneTreeNew =
+      newXdgTopLevel->xdgTopLevel->base->data;
+
+  int posX = topLevelSceneTreeToSplit->node.x;
+  int posY = topLevelSceneTreeToSplit->node.y;
+
+  int width = toSplit->xdgTopLevel->current.width;
+  int height = toSplit->xdgTopLevel->current.height;
+
+  // Devient frère à celui découpé
+  newXdgTopLevel->shrunkedTopLevel = toSplit;
+  toSplit->shrunkerTopLevel = newXdgTopLevel;
+  wlr_scene_node_reparent(&topLevelSceneTreeNew->node,
+                          topLevelSceneTreeToSplit->node.parent);
+
+  if (width > height) {
+    // Ajout à droite ou gauche
+    // Position & size de la nouvelle surface
+    wlr_scene_node_set_position(&topLevelSceneTreeNew->node, posX + width / 2,
+                                posY);
+    newXdgTopLevel->posX = toSplit->posX + width / 2;
+    newXdgTopLevel->posY = toSplit->posY;
+    wlr_xdg_toplevel_set_size(newXdgTopLevel->xdgTopLevel, width / 2, height);
+
+    // Resize the parent surface
+    wlr_xdg_toplevel_set_size(toSplit->xdgTopLevel, width / 2, height);
+
+  } else {
+    // Ajout en bas ou en haut
+    // Position & size de la nouvelle surface
+    wlr_scene_node_set_position(&topLevelSceneTreeNew->node, posX,
+                                posY + height / 2);
+    newXdgTopLevel->posX = toSplit->posX;
+    newXdgTopLevel->posY = toSplit->posY + height / 2;
+    wlr_xdg_toplevel_set_size(newXdgTopLevel->xdgTopLevel, width, height / 2);
+
+    // Resize the parent surface
+    wlr_xdg_toplevel_set_size(toSplit->xdgTopLevel, width, height / 2);
+  }
+}

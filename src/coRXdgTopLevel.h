@@ -4,8 +4,8 @@
 #include "coRInputs.h"
 
 // wlroot
-#include <wlr/types/wlr_xdg_shell.h>
 #include <wayland-util.h>
+#include <wlr/types/wlr_xdg_shell.h>
 
 // Struture
 struct coR_xdg_toplevel {
@@ -30,5 +30,7 @@ struct coR_xdg_toplevel {
 
 // Methods
 void newXdgTopLevelHandler(struct wl_listener *listener, void *data);
+void splitXdgTopLevel(struct coR_xdg_toplevel *toSplit,
+                      struct coR_xdg_toplevel *newXdgTopLevel);
 
 #endif

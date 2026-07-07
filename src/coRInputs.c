@@ -171,11 +171,6 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
           free(freeArea);
         }
       }
-
-      // TODO: resize other surfaces if colision
-
-      // TODO: enable move Surfaces
-
       resizingTopLevel = NULL;
       return;
     }
@@ -192,11 +187,34 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
       // TODO: Split existant surface
       // or take free Area depending on what is underneath
 
+      double cursorPosX = coRState->cursor->x;
+      double cursorPosY = coRState->cursor->y;
+
       // TODO: change toplevel posX & posY: Version temp
       int deltaX = coRState->cursor->x - startMovingPosX;
       int deltaY = coRState->cursor->y - startMovingPosY;
       movingTopLevel->posX += deltaX;
       movingTopLevel->posY += deltaY;
+
+      // What is bellow the cursor (free_area / an other surface)
+      double sx, sy;
+      struct wlr_scene_node *belowNode = wlr_scene_node_at(
+          &coRState->scene->tree.node, cursorPosX, cursorPosY, &sx, &sy);
+
+      // Split the surface in two
+      if (belowNode) {
+
+        // TODO recup les deux surface
+        splitXdgTopLevel(coRXdgTopLevelAutre, coRXdgTopLevel);
+
+        // Use the freeArea
+      } else {
+        // Search the freeArea
+        //
+
+        // Remplace it
+        //
+      }
 
       movingTopLevel = NULL;
     }
@@ -236,10 +254,12 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
 
     if (newSizeX > 0 && newSizeY > 0) {
       // Change size of the surface
-      int canResize = true;
+      int canResizeX = true;
+      int canResizeY = true;
       wlr_xdg_toplevel_set_size(resizingTopLevel->xdgTopLevel, newSizeX,
                                 newSizeY);
 
+      // TODO: same as below but for freeAreas
       // Resize all others on which we exceed
       struct coR_xdg_toplevel *tmpXdgTopLevel;
       wl_list_for_each(tmpXdgTopLevel, &coRState->xdgTopLevels, link) {
@@ -269,7 +289,7 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
               posY1 + sizeY1 >= posY2 && posY1 <= posY2 + sizeY2))
           continue;
 
-        // TODO: resize the other surface
+        // Resize the other surface
         printf("Should resize & move a surface\n");
         int distX = abs(posX1 + sizeX1 + 1 - posX2);
         int distY = abs(posY1 + sizeY1 + 1 - posY2);
@@ -283,15 +303,16 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
           int newWidth = tmpXdgTopLevel->xdgTopLevel->current.width - distX;
           int newHeight = tmpXdgTopLevel->xdgTopLevel->current.height;
 
-          if (newWidth >= 100 && newHeight >= 100) {
+          if (newWidth > tmpXdgTopLevel->xdgTopLevel->current.min_width &&
+              newHeight > tmpXdgTopLevel->xdgTopLevel->current.min_height) {
             tmpXdgTopLevel->posX += distX;
             wlr_scene_node_set_position(&sceneTree->node, tmpXdgTopLevel->posX,
                                         tmpXdgTopLevel->posY);
             wlr_xdg_toplevel_set_size(tmpXdgTopLevel->xdgTopLevel, newWidth,
                                       newHeight);
           } else {
-            canResize = false;
-            break;
+            canResizeX = false;
+            continue;
           }
 
         } else {
@@ -300,26 +321,33 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
           int newWidth = tmpXdgTopLevel->xdgTopLevel->current.width;
           int newHeight = tmpXdgTopLevel->xdgTopLevel->current.height - distY;
 
-          if (newWidth >= 100 && newHeight >= 100) {
+          if (newWidth > tmpXdgTopLevel->xdgTopLevel->current.min_width &&
+              newHeight > tmpXdgTopLevel->xdgTopLevel->current.min_height) {
             tmpXdgTopLevel->posY += distY;
             wlr_scene_node_set_position(&sceneTree->node, tmpXdgTopLevel->posX,
                                         tmpXdgTopLevel->posY);
             wlr_xdg_toplevel_set_size(tmpXdgTopLevel->xdgTopLevel, newWidth,
                                       newHeight);
           } else {
-            canResize = false;
-            break;
+            canResizeY = false;
+            continue;
           }
         }
       }
 
-      // UNDO the resize of the surface due to impossibility of changing size to
-      // an surface -> TODO: separate X and Y undo size
-      if (canResize == false &&
-          (newSizeX > currentSizeX || newSizeY > currentSizeY)) {
-        wlr_xdg_toplevel_set_size(resizingTopLevel->xdgTopLevel, currentSizeX,
-                                  currentSizeY);
+      // UNDO the resizing due to impossibility of resizing an other
+      int finalSizeX = newSizeX;
+      int finalSizeY = newSizeY;
+
+      if (canResizeX == false && (newSizeX > currentSizeX)) {
+        finalSizeX = currentSizeX;
       }
+      if (canResizeY == false && (newSizeY > currentSizeY)) {
+        finalSizeY = currentSizeY;
+      }
+
+      wlr_xdg_toplevel_set_size(resizingTopLevel->xdgTopLevel, finalSizeX,
+                                finalSizeY);
     }
   }
 
