@@ -33,15 +33,15 @@ int main() {
   wlr_log_init(WLR_DEBUG, NULL);
 
   /* Initialization Pattern
-    0.Structure for server's components, listeners
-    1.Create a Wayland display
-    2.Create a wlroots backend (graphical)
-    2.1 Inputs managing
-    2.5.Render's main components
-    2.7 Compositor for surface managing
-    3.Set up event listeners
-    4.Start the backend
-    5.Run the Wayland event loop
+  0.Structure for server's components, listeners
+  1.Create a Wayland display
+  2.Create a wlroots backend (graphical)
+  2.1 Inputs managing
+  2.5.Render's main components
+  2.7 Compositor for surface managing
+  3.Set up event listeners
+  4.Start the backend
+  5.Run the Wayland event loop
   */
 
   // 0.

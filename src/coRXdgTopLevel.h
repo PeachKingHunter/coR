@@ -32,5 +32,8 @@ struct coR_xdg_toplevel {
 void newXdgTopLevelHandler(struct wl_listener *listener, void *data);
 void splitXdgTopLevel(struct coR_xdg_toplevel *toSplit,
                       struct coR_xdg_toplevel *newXdgTopLevel);
+void resizeTopLevel(struct coR_xdg_toplevel *resizingTopLevel,
+                    struct coR_state *coRState, int startPosX, int startPosY,
+                    int startSizeX, int startSizeY);
 
 #endif
