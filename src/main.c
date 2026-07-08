@@ -4,7 +4,7 @@
 #include "coRSurface.h"
 #include "coRXdgTopLevel.h"
 
-#include "coRInputs.h"
+#include "inputs/coRInputs.h"
 
 // Input managing
 #include "wlr/backend/session.h"

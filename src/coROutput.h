@@ -3,7 +3,7 @@
 
 // My lib
 #include "coRState.h"
-#include "coRXdgTopLevel.h"
+#include "inputs/coRInputs.h"
 
 // wlroot
 #include <wayland-server-core.h>

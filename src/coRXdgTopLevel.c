@@ -2,6 +2,7 @@
 #include "coRState.h"
 #include <stdio.h>
 #include <wayland-util.h>
+#include "inputs/coRInputs.h"
 
 static void commitXdgTopLevelHandler(struct wl_listener *listener, void *data) {
   // Variables
@@ -91,11 +92,11 @@ static void destroyXdgTopLevelHandler(struct wl_listener *listener,
   */
 
   // Variables
-  struct wlr_xdg_surface *xdgSurface = data;
+  // struct wlr_xdg_surface *xdgSurface = data;
 
   struct coR_xdg_toplevel *coRXdgTopLevel =
       wl_container_of(listener, coRXdgTopLevel, destroyListener);
-  struct coR_state *coRState = coRXdgTopLevel->coRState;
+  // struct coR_state *coRState = coRXdgTopLevel->coRState;
 
   // 0.
 
@@ -231,7 +232,10 @@ void splitXdgTopLevel(struct coR_xdg_toplevel *toSplit,
   }
 }
 
-// Resize toplevel for cursor motion
+/* Resize toplevel for cursor motion
+startPosX & startPosY are cursor pos
+startSizeX and startSizeY are size of the resizingTopLevel at default
+*/
 void resizeTopLevel(struct coR_xdg_toplevel *resizingTopLevel,
                     struct coR_state *coRState, int startPosX, int startPosY,
                     int startSizeX, int startSizeY) {

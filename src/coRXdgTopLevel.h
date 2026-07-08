@@ -1,7 +1,7 @@
 #ifndef CoRXdgSurface_H
 #define CoRXdgSurface_H
+#pragma once
 
-#include "coRInputs.h"
 
 // wlroot
 #include <wayland-util.h>
