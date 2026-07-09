@@ -82,10 +82,16 @@ int main() {
   if (compositor == NULL)
     exit(1);
   coRState.compositor = compositor;
+
+	// wlr_subcompositor_create(server.wl_display);
+	// wlr_data_device_manager_create(server.wl_display);
+
+
+
   struct wlr_shm *shm =
       wlr_shm_create_with_renderer(display, 1, coRState.renderer);
 
-  struct wlr_xdg_shell *xdgShell = wlr_xdg_shell_create(display, 6);
+  struct wlr_xdg_shell *xdgShell = wlr_xdg_shell_create(display, 3);
   if (xdgShell == NULL || shm == NULL)
     exit(1);
 

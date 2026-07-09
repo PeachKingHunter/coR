@@ -1,17 +1,20 @@
 #include "./coRCursor.h"
-#include <wlr/types/wlr_cursor.h>
 #include "../coRXdgTopLevel.h"
 #include "coRInputs.h"
+#include <wlr/types/wlr_cursor.h>
 
 // Global variables
 struct coR_xdg_toplevel *resizingTopLevel = NULL;
+int startResizingCursorPosX, startResizingCursorPosY;
 int startResizingPosX, startResizingPosY;
 int startResizingWidth, startResizingHeight;
+extern int superPressed;
+extern int lastDeltaX;
 
 struct coR_xdg_toplevel *movingTopLevel = NULL;
 int startMovingPosX, startMovingPosY;
 
-extern int superPressed;
+extern int lastDeltaY;
 
 // ---- ## Curseur ## ---- //
 void cursorButtonHandler(struct wl_listener *listener, void *data) {
@@ -22,97 +25,46 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
       wl_container_of(listener, coRState, cursorButtonListener);
   struct wlr_pointer_button_event *event = data;
 
-  // Active/Désactive le resize d'un toplevel avec click droit + SUPER
+  // -> Active/Désactive -> le resize d'un toplevel avec click droit + SUPER
   if (superPressed && event->button == 273) {
     if (event->state == WL_POINTER_BUTTON_STATE_PRESSED) {
       resizingTopLevel = coRState->focusedSurface->data;
-      startResizingPosX = coRState->cursor->x;
-      startResizingPosY = coRState->cursor->y;
+      startResizingCursorPosX = coRState->cursor->x;
+      startResizingCursorPosY = coRState->cursor->y;
+      startResizingPosX = resizingTopLevel->posX;
+      startResizingPosY = resizingTopLevel->posY;
       struct coR_xdg_toplevel *focusedTopLevel = coRState->focusedSurface->data;
       startResizingWidth = focusedTopLevel->xdgTopLevel->current.width;
       startResizingHeight = focusedTopLevel->xdgTopLevel->current.height;
 
+      lastDeltaX = 0;
+      lastDeltaY = 0;
+
     } else if (event->state == WL_POINTER_BUTTON_STATE_RELEASED) {
-      // create new free Area (1 or 2 which the resize)
-      // Variables
-      int endResizingPosX = coRState->cursor->x;
-      int endResizingPosY = coRState->cursor->y;
-
-      int deltaX = startResizingPosX - endResizingPosX;
-      int deltaY = startResizingPosY - endResizingPosY;
-
-      int posX = resizingTopLevel->posX;
-      int posY = resizingTopLevel->posY;
-      int sizeX = resizingTopLevel->xdgTopLevel->current.width;
-      int sizeY = resizingTopLevel->xdgTopLevel->current.height;
-
-      // Create right Free Area
-      if (deltaX > 0) {
-        struct free_area *freeArea = malloc(sizeof(struct free_area));
-        if (freeArea == NULL)
-          exit(1);
-        freeArea->posX = posX + sizeX;
-        freeArea->posY = posY;
-        freeArea->sizeX = deltaX;
-        freeArea->sizeY = sizeY;
-        if (freeArea->sizeX > 0 && freeArea->sizeY > 0) {
-          wl_list_insert(&coRState->freeAreas, &freeArea->link);
-        } else {
-          free(freeArea);
-        }
-      }
-
-      // Create down Free Area
-      if (deltaY > 0) {
-        struct free_area *freeArea = malloc(sizeof(struct free_area));
-        if (freeArea == NULL)
-          exit(1);
-        freeArea->posX = posX;
-        freeArea->posY = posY + sizeY;
-        freeArea->sizeX = sizeX;
-        freeArea->sizeY = deltaY;
-        if (freeArea->sizeX > 0 && freeArea->sizeY > 0) {
-          wl_list_insert(&coRState->freeAreas, &freeArea->link);
-        } else {
-          free(freeArea);
-        }
-      }
-
-      // Create down right Free Area
-      if (deltaY > 0) {
-        struct free_area *freeArea = malloc(sizeof(struct free_area));
-        if (freeArea == NULL)
-          exit(1);
-        freeArea->posX = posX + sizeX;
-        freeArea->posY = posY + sizeY;
-        freeArea->sizeX = deltaX;
-        freeArea->sizeY = deltaY;
-        if (freeArea->sizeX > 0 && freeArea->sizeY > 0) {
-          wl_list_insert(&coRState->freeAreas, &freeArea->link);
-        } else {
-          free(freeArea);
-        }
-      }
       resizingTopLevel = NULL;
-      return;
     }
   }
 
-  // Active/Désactive le déplacement d'un toplevel avec click left + SUPER
-  if (superPressed && event->button == 272) {
+  // -> Active/Désactive -> le déplacement d'un toplevel avec click left + SUPER
+  else if (superPressed && event->button == 272) {
     if (event->state == WL_POINTER_BUTTON_STATE_PRESSED) {
       movingTopLevel = coRState->focusedSurface->data;
       startMovingPosX = coRState->cursor->x;
       startMovingPosY = coRState->cursor->y;
+      return;
 
     } else if (event->state == WL_POINTER_BUTTON_STATE_RELEASED) {
-      // TODO: Split existant surface
-      // or take free Area depending on what is underneath
+      // Variables
+      int startPosX = movingTopLevel->posX;
+      int startPosY = movingTopLevel->posY;
+      int startSizeX = movingTopLevel->sizeX;
+      int startSizeY = movingTopLevel->sizeY;
 
+      // Split existant surface
       double cursorPosX = coRState->cursor->x;
       double cursorPosY = coRState->cursor->y;
 
-      // TODO: change toplevel posX & posY: Version temp
+      // Change toplevel posX & posY
       int deltaX = coRState->cursor->x - startMovingPosX;
       int deltaY = coRState->cursor->y - startMovingPosY;
       movingTopLevel->posX += deltaX;
@@ -124,7 +76,7 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
         if (tmpXdgTopLevel == movingTopLevel)
           continue;
 
-        // If is bellow the cursor (TODO free_area / an other surface)
+        // If is bellow the cursor
         int posX = tmpXdgTopLevel->posX;
         int sizeX = tmpXdgTopLevel->xdgTopLevel->current.width;
 
@@ -139,9 +91,17 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
         // Split the surface in two
         splitXdgTopLevel(tmpXdgTopLevel, movingTopLevel);
 
-        // TODO: resize all surface to take the place
-        // Add Free Area else
+        // TODO: resize all surface to take the place left
+        // Resize on X axis
+        if (sizeX < sizeY) {
+          wl_list_for_each(tmpXdgTopLevel, &coRState->xdgTopLevels, link) {
 
+          }
+          movingTopLevel = NULL;
+          break;
+        }
+
+        // Resize on X axis
         movingTopLevel = NULL;
         break;
       }
@@ -182,39 +142,9 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
                   event->delta_y);
   wlr_scene_node_set_position(&coRState->cursorScene->node, posX, posY);
 
-  resizeTopLevel(resizingTopLevel, coRState, startResizingPosX,
-                 startResizingPosY, startResizingWidth, startResizingHeight);
-
-  // move toplevel with cursor motion
-  if (movingTopLevel != NULL) {
-    int deltaX = coRState->cursor->x - startMovingPosX;
-    int deltaY = coRState->cursor->y - startMovingPosY;
-
-    struct wlr_scene_tree *sceneTree = movingTopLevel->xdgTopLevel->base->data;
-    wlr_scene_node_set_position(&sceneTree->node, movingTopLevel->posX + deltaX,
-                                movingTopLevel->posY + deltaY);
-  }
-
-  // Detecte la surface en dessous du curseur
-  wlr_scene_node_set_enabled(&coRState->cursorScene->node, false);
+  // -> Change le focus si souris sur surface
   double sX, sY;
-  struct wlr_scene_node *node =
-      wlr_scene_node_at(&coRState->scene->tree.node, posX, posY, &sX, &sY);
-  wlr_scene_node_set_enabled(&coRState->cursorScene->node, true);
-
-  // Si aucune surface sous le curseur
-  if (node == NULL || node->type != WLR_SCENE_NODE_BUFFER)
-    return;
-
-  struct wlr_scene_buffer *scene_buffer = wlr_scene_buffer_from_node(node);
-  struct wlr_scene_surface *scene_surface =
-      wlr_scene_surface_try_from_buffer(scene_buffer);
-
-  // Si pas réussi à l'obtenir
-  if (!scene_surface)
-    return;
-
-  struct wlr_surface *surface = scene_surface->surface;
+  struct wlr_surface *surface = getSurfaceBelowCursor(coRState, &sX, &sY);
   if (surface) {
     // Si le focus n'est pas dessus
     if (coRState->focusedSurface != surface)
@@ -224,9 +154,19 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
     wlr_seat_pointer_notify_motion(coRState->seat, event->time_msec, sX, sY);
   }
 
-  // Retire le focus si il n'y à pas de surface à focus
-  if (!coRState->focusedSurface) {
-    wlr_seat_pointer_clear_focus(coRState->seat);
+  // -> le resize d'un toplevel avec click droit + SUPER
+  resizeTopLevel(resizingTopLevel, coRState, startResizingCursorPosX,
+                 startResizingCursorPosY, startResizingWidth,
+                 startResizingHeight, startResizingPosX, startResizingPosY);
+
+  // -> le déplacement d'un toplevel avec click left + SUPER
+  if (movingTopLevel != NULL) {
+    int deltaX = coRState->cursor->x - startMovingPosX;
+    int deltaY = coRState->cursor->y - startMovingPosY;
+
+    struct wlr_scene_tree *sceneTree = movingTopLevel->xdgTopLevel->base->data;
+    wlr_scene_node_set_position(&sceneTree->node, movingTopLevel->posX + deltaX,
+                                movingTopLevel->posY + deltaY);
   }
 
   // Envoie au client
@@ -246,39 +186,7 @@ void cursorMotionAbsoluteHandler(struct wl_listener *listener, void *data) {
                            event->y);
   wlr_scene_node_set_position(&coRState->cursorScene->node, posX, posY);
 
-  // Detecte la surface en dessous du curseur
-  wlr_scene_node_set_enabled(&coRState->cursorScene->node, false);
-  double sX, sY;
-  struct wlr_scene_node *node =
-      wlr_scene_node_at(&coRState->scene->tree.node, posX, posY, &sX, &sY);
-  wlr_scene_node_set_enabled(&coRState->cursorScene->node, true);
-
-  // Si aucune surface sous le curseur
-  if (node == NULL || node->type != WLR_SCENE_NODE_BUFFER)
-    return;
-
-  struct wlr_scene_buffer *scene_buffer = wlr_scene_buffer_from_node(node);
-  struct wlr_scene_surface *scene_surface =
-      wlr_scene_surface_try_from_buffer(scene_buffer);
-
-  // Si pas réussi à l'obtenir
-  if (!scene_surface)
-    return;
-
-  struct wlr_surface *surface = scene_surface->surface;
-  if (surface) {
-    // Si le focus n'est pas dessus
-    if (coRState->focusedSurface != surface)
-      inputsChangeSurfaceToFocus(coRState, surface, sX, sY);
-
-    // Bouge le pointeur physique dedans
-    wlr_seat_pointer_notify_motion(coRState->seat, event->time_msec, sX, sY);
-  }
-
-  // Retire le focus si il n'y à pas de surface à focus
-  if (!coRState->focusedSurface) {
-    wlr_seat_pointer_clear_focus(coRState->seat);
-  }
+  // TODO: comme l'autre fonction: cursorMotion
 
   // Envoie au client
   wlr_seat_pointer_notify_frame(coRState->seat);
@@ -299,4 +207,29 @@ void cursorAxisHandler(struct wl_listener *listener, void *data) {
   wlr_seat_pointer_notify_frame(coRState->seat);
 }
 
+struct wlr_surface *getSurfaceBelowCursor(struct coR_state *coRState,
+                                          double *sX, double *sY) {
+  // Variables
+  double posX = coRState->cursor->x;
+  double posY = coRState->cursor->y;
 
+  // Get node
+  wlr_scene_node_set_enabled(&coRState->cursorScene->node, false);
+  struct wlr_scene_node *node =
+      wlr_scene_node_at(&coRState->scene->tree.node, posX, posY, sX, sY);
+  wlr_scene_node_set_enabled(&coRState->cursorScene->node, true);
+
+  // Si aucune surface sous le curseur
+  if (node == NULL || node->type != WLR_SCENE_NODE_BUFFER)
+    return NULL;
+
+  struct wlr_scene_buffer *scene_buffer = wlr_scene_buffer_from_node(node);
+  struct wlr_scene_surface *scene_surface =
+      wlr_scene_surface_try_from_buffer(scene_buffer);
+
+  // Si pas réussi à l'obtenir
+  if (!scene_surface)
+    return NULL;
+
+  return scene_surface->surface;
+}

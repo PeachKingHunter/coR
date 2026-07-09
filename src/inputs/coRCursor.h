@@ -4,8 +4,8 @@
 
 // Wlroot
 #include "wlr/backend/libinput.h"
-#include <wlr/types/wlr_cursor.h>
 #include <wayland-util.h>
+#include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_xdg_shell.h>
 
 // My Lib
@@ -28,5 +28,8 @@ void cursorButtonHandler(struct wl_listener *listener, void *data);
 void cursorMotionHandler(struct wl_listener *listener, void *data);
 void cursorMotionAbsoluteHandler(struct wl_listener *listener, void *data);
 void cursorAxisHandler(struct wl_listener *listener, void *data);
+
+struct wlr_surface *getSurfaceBelowCursor(struct coR_state *coRState,
+                                          double *sX, double *sY);
 
 #endif
