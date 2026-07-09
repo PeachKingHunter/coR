@@ -2,8 +2,8 @@
 #define CoRState_H
 
 // wlroot for initialization Pattern
-#include <wayland-server-core.h>
 #include "wlr/types/wlr_seat.h"
+#include <wayland-server-core.h>
 
 // Surface moving & resize (scene)
 #include <wayland-util.h>
@@ -43,15 +43,18 @@ struct coR_state {
 
   // Listeners
   struct wl_listener newOutputListener;
-  struct wl_listener newSurfaceListener;
+  // struct wl_listener newSurfaceListener; // For normal surface (wayland but
+  // not used because of xdgTopLevel)
   struct wl_listener newXdgTopLevelListener;
 
   struct wl_listener newInputListener;
-  
+
   struct wl_listener cursorButtonListener;
   struct wl_listener cursorMotionListener;
   struct wl_listener cursorMotionAbsoluteListener;
   struct wl_listener cursorAxisListener;
+
+  struct wl_listener newLayerSurfaceListener; // For layerShell
 };
 
 struct free_area {

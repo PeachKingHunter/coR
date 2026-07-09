@@ -1,7 +1,7 @@
 // My lib
+#include "coRLayerSurface.h"
 #include "coROutput.h"
 #include "coRState.h"
-#include "coRSurface.h"
 #include "coRXdgTopLevel.h"
 
 #include "inputs/coRInputs.h"
@@ -20,13 +20,16 @@
 // Compositor
 #include <wlr/types/wlr_shm.h>
 
-// LibC
-#include <unistd.h> // Forks
+// Layer shell
+#include <wlr/types/wlr_layer_shell_v1.h>
 
 // wlroot for initialization Pattern
 #include <wayland-server-core.h>
 #include <wlr/backend.h>
 #include <wlr/util/log.h>
+
+// LibC
+#include <unistd.h> // Forks
 
 int main() {
   // More logs
@@ -134,12 +137,17 @@ int main() {
   coRState.cursorScene =
       wlr_scene_rect_create(&coRState.scene->tree, 10, 10, color);
 
+  // Layer shell
+  struct wlr_layer_shell_v1 *layerShell = wlr_layer_shell_v1_create(display, 5);
+  // layerShell->events.new_surface
+
   // 3.
   coRState.newOutputListener.notify = newOutputHandler;
   wl_signal_add(&backend->events.new_output, &coRState.newOutputListener);
 
-  coRState.newSurfaceListener.notify = newSurfaceHandler;
-  wl_signal_add(&compositor->events.new_surface, &coRState.newSurfaceListener);
+  // coRState.newSurfaceListener.notify = newSurfaceHandler;
+  // wl_signal_add(&compositor->events.new_surface,
+  // &coRState.newSurfaceListener);
 
   coRState.newXdgTopLevelListener.notify = newXdgTopLevelHandler;
   wl_signal_add(&xdgShell->events.new_toplevel,
@@ -162,6 +170,10 @@ int main() {
   coRState.cursorAxisListener.notify = cursorAxisHandler;
   wl_signal_add(&coRState.cursor->events.axis, &coRState.cursorAxisListener);
 
+  coRState.newLayerSurfaceListener.notify = newLayerSurfaceHandler;
+  wl_signal_add(&layerShell->events.new_surface,
+                &coRState.newLayerSurfaceListener);
+
   // Socket for get apps
   const char *socket = wl_display_add_socket_auto(coRState.display);
   if (!socket) {
@@ -173,13 +185,10 @@ int main() {
 
   // Teste open app
   setenv("WAYLAND_DISPLAY", socket, true);
-  if (fork() == 0) {
-    // execlp("sh", "sh", "-c", "kitty", (char *)NULL);
-    // execlp("kitty", "kitty", (char *)NULL);
-    // execlp("dolphin", "dolphin", (char *)NULL);
-    // execlp("weston-simple-shm", "weston-simple-shm", NULL);
+  if (fork() == 0)
     execlp("weston-terminal", "weston-terminal", NULL);
-  }
+  if (fork() == 0)
+    execlp("quickshell", "quickshell", NULL);
   wlr_log(WLR_INFO, "Running Wayland compositor on WAYLAND_DISPLAY=%s", socket);
 
   // 5.
@@ -187,7 +196,7 @@ int main() {
 
   // Clear
   wl_list_remove(&coRState.newOutputListener.link);
-  wl_list_remove(&coRState.newSurfaceListener.link);
+  wl_list_remove(&coRState.newLayerSurfaceListener.link);
   wl_list_remove(&coRState.newXdgTopLevelListener.link);
   wl_list_remove(&coRState.newInputListener.link);
 

@@ -10,10 +10,10 @@ executable(
     'src/main.c',
     'src/coRState.c',
     'src/coROutput.c',
-    'src/coRSurface.c',
     'src/coRXdgTopLevel.c',
     'src/inputs/coRInputs.c',
     'src/inputs/coRKeyboard.c',
     'src/inputs/coRCursor.c',
+    'src/coRLayerSurface.c',
     dependencies: [wayland_server, wlroots, xkbcommon]
 )
