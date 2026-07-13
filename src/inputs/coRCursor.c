@@ -1,6 +1,9 @@
 #include "./coRCursor.h"
 #include "../coRXdgTopLevel.h"
 #include "coRInputs.h"
+#include <stddef.h>
+#include <stdlib.h>
+#include <wayland-util.h>
 #include <wlr/types/wlr_cursor.h>
 
 // Global variables
@@ -91,19 +94,124 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
         // Split the surface in two
         splitXdgTopLevel(tmpXdgTopLevel, movingTopLevel);
 
-        // TODO: resize all surface to take the place left
+        // TODO VERIF: resize all surface to take the place left
         // Resize on X axis
-        if (sizeX < sizeY) {
-          wl_list_for_each(tmpXdgTopLevel, &coRState->xdgTopLevels, link) {
+        if (startSizeX < startSizeY) {
+          int side = 0;
+        takeEmptyAreaAxisX:
+          wl_list_for_each_reverse(tmpXdgTopLevel, &coRState->xdgTopLevels,
+                                   link) {
+            // Variables
+            int tmpPosX = tmpXdgTopLevel->posX;
+            int tmpPosY = tmpXdgTopLevel->posY;
+            int tmpSizeX = tmpXdgTopLevel->sizeX;
+            int tmpSizeY = tmpXdgTopLevel->sizeY;
 
+            // Is resizable on the empty area
+            if (!(tmpPosY >= startPosY) ||
+                !(tmpPosY + tmpSizeY <= startPosY + startSizeY))
+              continue;
+
+            // Is side by side with it
+            // Left side
+            if (abs(tmpPosX + tmpSizeX - startPosX) < 5) {
+              if (side == 2)
+                continue;
+              else if (side == 0)
+                side = 1;
+            }
+
+            // Right side
+            else if (abs(startPosX + startSizeX - tmpPosX) < 5) {
+              if (side == 1)
+                continue;
+              else if (side == 0)
+                side = 2;
+            }
+
+            // Not side by side
+            else {
+              continue;
+            }
+
+            // Resize and move
+            if (startPosX < tmpPosX) {
+              struct wlr_scene_tree *sceneTree =
+                  tmpXdgTopLevel->xdgTopLevel->base->data;
+              tmpXdgTopLevel->posX = startPosX;
+              wlr_scene_node_set_position(
+                  &sceneTree->node, tmpXdgTopLevel->posX, tmpXdgTopLevel->posY);
+            }
+
+            tmpXdgTopLevel->sizeX += startSizeX;
+            wlr_xdg_toplevel_set_size(tmpXdgTopLevel->xdgTopLevel,
+                                      tmpXdgTopLevel->sizeX,
+                                      tmpXdgTopLevel->sizeY);
+
+            movingTopLevel = NULL;
           }
-          movingTopLevel = NULL;
-          break;
+          if (movingTopLevel == NULL)
+            break;
         }
 
-        // Resize on X axis
-        movingTopLevel = NULL;
-        break;
+        // Resize on Y axis
+        int side = 0;
+        wl_list_for_each_reverse(tmpXdgTopLevel, &coRState->xdgTopLevels,
+                                 link) {
+          // Variables
+          int tmpPosX = tmpXdgTopLevel->posX;
+          int tmpPosY = tmpXdgTopLevel->posY;
+          int tmpSizeX = tmpXdgTopLevel->sizeX;
+          int tmpSizeY = tmpXdgTopLevel->sizeY;
+
+          // Is resizable on the empty area
+          if (!(tmpPosX >= startPosX) ||
+              !(tmpPosX + tmpSizeX <= startPosX + startSizeX))
+            continue;
+
+          // Is side by side with it
+          // Top side
+          if (abs(tmpPosY + tmpSizeY - startPosY) < 5) {
+            if (side == 2)
+              continue;
+            else if (side == 0)
+              side = 1;
+          }
+
+          // Bottom side
+          else if (abs(startPosY + startSizeY - tmpPosY) < 5) {
+            if (side == 1)
+              continue;
+            else if (side == 0)
+              side = 2;
+          }
+
+          // Not side by side
+          else {
+            continue;
+          }
+
+          // Resize and move
+          if (startPosY < tmpPosY) {
+            struct wlr_scene_tree *sceneTree =
+                tmpXdgTopLevel->xdgTopLevel->base->data;
+            tmpXdgTopLevel->posY = startPosY;
+            wlr_scene_node_set_position(&sceneTree->node, tmpXdgTopLevel->posX,
+                                        tmpXdgTopLevel->posY);
+          }
+
+          tmpXdgTopLevel->sizeY += startSizeY;
+          wlr_xdg_toplevel_set_size(tmpXdgTopLevel->xdgTopLevel,
+                                    tmpXdgTopLevel->sizeX,
+                                    tmpXdgTopLevel->sizeY);
+
+          movingTopLevel = NULL;
+        }
+
+        if (movingTopLevel == NULL)
+          break;
+        else
+          goto takeEmptyAreaAxisX;
       }
 
       // Pas de surface trouvé -> On la remet à sa position initial

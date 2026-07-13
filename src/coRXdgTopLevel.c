@@ -1,5 +1,6 @@
 #include "coRXdgTopLevel.h"
 #include "coRState.h"
+#include "inputs/coRCursor.h"
 #include "inputs/coRInputs.h"
 #include <stdio.h>
 #include <wayland-util.h>
@@ -98,10 +99,133 @@ static void destroyXdgTopLevelHandler(struct wl_listener *listener,
 
   struct coR_xdg_toplevel *coRXdgTopLevel =
       wl_container_of(listener, coRXdgTopLevel, destroyListener);
-  // struct coR_state *coRState = coRXdgTopLevel->coRState;
+  struct coR_state *coRState = coRXdgTopLevel->coRState;
 
   // 0.
+  // TODO VERIF: resize all surface to take the place left
+  // Variables
 
+  struct coR_xdg_toplevel *movingTopLevel = coRXdgTopLevel;
+  int startPosX = movingTopLevel->posX;
+  int startPosY = movingTopLevel->posY;
+  int startSizeX = movingTopLevel->sizeX;
+  int startSizeY = movingTopLevel->sizeY;
+  // Resize on X axis
+  struct coR_xdg_toplevel *tmpXdgTopLevel;
+  if (startSizeX < startSizeY) {
+    int side = 0;
+  takeEmptyAreaAxisX:
+    wl_list_for_each_reverse(tmpXdgTopLevel, &coRState->xdgTopLevels, link) {
+      // Variables
+      int tmpPosX = tmpXdgTopLevel->posX;
+      int tmpPosY = tmpXdgTopLevel->posY;
+      int tmpSizeX = tmpXdgTopLevel->sizeX;
+      int tmpSizeY = tmpXdgTopLevel->sizeY;
+
+      // Is resizable on the empty area
+      if (!(tmpPosY >= startPosY) ||
+          !(tmpPosY + tmpSizeY <= startPosY + startSizeY))
+        continue;
+
+      // Is side by side with it
+      // Left side
+      if (abs(tmpPosX + tmpSizeX - startPosX) < 5) {
+        if (side == 2)
+          continue;
+        else if (side == 0)
+          side = 1;
+      }
+
+      // Right side
+      else if (abs(startPosX + startSizeX - tmpPosX) < 5) {
+        if (side == 1)
+          continue;
+        else if (side == 0)
+          side = 2;
+      }
+
+      // Not side by side
+      else {
+        continue;
+      }
+
+      // Resize and move
+      if (startPosX < tmpPosX) {
+        struct wlr_scene_tree *sceneTree =
+            tmpXdgTopLevel->xdgTopLevel->base->data;
+        tmpXdgTopLevel->posX = startPosX;
+        wlr_scene_node_set_position(&sceneTree->node, tmpXdgTopLevel->posX,
+                                    tmpXdgTopLevel->posY);
+      }
+
+      tmpXdgTopLevel->sizeX += startSizeX;
+      wlr_xdg_toplevel_set_size(tmpXdgTopLevel->xdgTopLevel,
+                                tmpXdgTopLevel->sizeX, tmpXdgTopLevel->sizeY);
+
+      movingTopLevel = NULL;
+    }
+    if (movingTopLevel == NULL)
+      goto endResizeAllSurfaces;
+  }
+
+  // Resize on Y axis
+  int side = 0;
+  wl_list_for_each_reverse(tmpXdgTopLevel, &coRState->xdgTopLevels, link) {
+    // Variables
+    int tmpPosX = tmpXdgTopLevel->posX;
+    int tmpPosY = tmpXdgTopLevel->posY;
+    int tmpSizeX = tmpXdgTopLevel->sizeX;
+    int tmpSizeY = tmpXdgTopLevel->sizeY;
+
+    // Is resizable on the empty area
+    if (!(tmpPosX >= startPosX) ||
+        !(tmpPosX + tmpSizeX <= startPosX + startSizeX))
+      continue;
+
+    // Is side by side with it
+    // Top side
+    if (abs(tmpPosY + tmpSizeY - startPosY) < 5) {
+      if (side == 2)
+        continue;
+      else if (side == 0)
+        side = 1;
+    }
+
+    // Bottom side
+    else if (abs(startPosY + startSizeY - tmpPosY) < 5) {
+      if (side == 1)
+        continue;
+      else if (side == 0)
+        side = 2;
+    }
+
+    // Not side by side
+    else {
+      continue;
+    }
+
+    // Resize and move
+    if (startPosY < tmpPosY) {
+      struct wlr_scene_tree *sceneTree =
+          tmpXdgTopLevel->xdgTopLevel->base->data;
+      tmpXdgTopLevel->posY = startPosY;
+      wlr_scene_node_set_position(&sceneTree->node, tmpXdgTopLevel->posX,
+                                  tmpXdgTopLevel->posY);
+    }
+
+    tmpXdgTopLevel->sizeY += startSizeY;
+    wlr_xdg_toplevel_set_size(tmpXdgTopLevel->xdgTopLevel,
+                              tmpXdgTopLevel->sizeX, tmpXdgTopLevel->sizeY);
+
+    movingTopLevel = NULL;
+  }
+
+  if (movingTopLevel == NULL)
+    goto endResizeAllSurfaces;
+  else
+    goto takeEmptyAreaAxisX;
+
+endResizeAllSurfaces:
   // 1.
   wl_list_remove(&coRXdgTopLevel->link);
 
@@ -118,6 +242,11 @@ static void destroyXdgTopLevelHandler(struct wl_listener *listener,
 
 void newXdgTopLevelHandler(struct wl_listener *listener, void *data) {
   printf("-> obtain new xdg TopLevel\n");
+  struct wlr_xdg_surface *surface = data;
+  printf("new xdg surface role=%d\n", surface->role);
+  
+  if (surface->role == WLR_XDG_SURFACE_ROLE_POPUP)
+    return;
   /*
     1.Structure de donnée
     2.Stockage (liste)

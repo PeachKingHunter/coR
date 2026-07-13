@@ -1,5 +1,9 @@
+run: compile
+	cd forInstall; ./coR
+
 compile:
-	meson compile
+	cd build; meson compile
+	mv build/executable.out forInstall/coR
 
 createBuildDir:
 	meson setup build/
@@ -7,6 +11,9 @@ createBuildDir:
 	cd build
 	ninja
 
+install: compile
+	sudo cp forInstall/coR.desktop /usr/share/wayland-sessions;
+	sudo cp forInstall/coR /usr/bin/
 
 
 # Chercher le nom du package

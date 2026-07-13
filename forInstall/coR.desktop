@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=CoR
+Comment=A simple tiling Wayland compositor
+Exec=/usr/bin/coR
+Type=Application
+DesktopNames=CoR
+Keywords=tiling;wayland;compositor;

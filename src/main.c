@@ -19,9 +19,15 @@
 
 // Compositor
 #include <wlr/types/wlr_shm.h>
+#include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_subcompositor.h>
 
 // Layer shell
 #include <wlr/types/wlr_layer_shell_v1.h>
+
+// Other protocoles
+#include <wlr/types/wlr_fractional_scale_v1.h>
+#include <wlr/types/wlr_viewporter.h>
 
 // wlroot for initialization Pattern
 #include <wayland-server-core.h>
@@ -71,10 +77,27 @@ int main() {
   // Set capabilities
   wlr_seat_set_capabilities(coRState.seat, WL_SEAT_CAPABILITY_KEYBOARD |
                                                WL_SEAT_CAPABILITY_POINTER);
+  // Curseur
+  coRState.cursor = wlr_cursor_create();
+  coRState.outputLayout = wlr_output_layout_create(display);
+  wlr_cursor_attach_output_layout(coRState.cursor, coRState.outputLayout);
+	// server.cursor_mgr = wlr_xcursor_manager_create(NULL, 24); // To add
 
   // 2.5.
+  // Renderer
   coRState.renderer = wlr_renderer_autocreate(backend);
+	if (coRState.renderer == NULL) {
+		wlr_log(WLR_ERROR, "Error: rendererCreation");
+    exit(1);
+	}
+  wlr_renderer_init_wl_display(coRState.renderer, display);
+
+  // Allocator
   coRState.allocator = wlr_allocator_autocreate(backend, coRState.renderer);
+	if (coRState.allocator == NULL) {
+		wlr_log(WLR_ERROR, "Error: allocatorCreation");
+    exit(1);
+	}
 
   // 2.7 - Compositor
   struct wlr_compositor *compositor =
@@ -83,16 +106,18 @@ int main() {
     exit(1);
   coRState.compositor = compositor;
 
-	// wlr_subcompositor_create(server.wl_display);
-	// wlr_data_device_manager_create(server.wl_display);
-
-
+  wlr_subcompositor_create(display);
+  // wlr_data_device_manager_create(server.wl_display); // TO add late (clipboard)
 
   struct wlr_shm *shm =
-      wlr_shm_create_with_renderer(display, 1, coRState.renderer);
+      wlr_shm_create_with_renderer(display, 2, coRState.renderer);
+  if (shm == NULL)
+    exit(1);
+
+  wlr_renderer_init_wl_shm(coRState.renderer, display);
 
   struct wlr_xdg_shell *xdgShell = wlr_xdg_shell_create(display, 3);
-  if (xdgShell == NULL || shm == NULL)
+  if (xdgShell == NULL)
     exit(1);
 
   wl_list_init(&coRState.xdgTopLevels); // Liste of surfaces
@@ -127,11 +152,6 @@ int main() {
   // freeArea->sizeX = 200; // Auto Screen's size
   // freeArea->sizeY = 500; // Auto Screen's size
   // wl_list_insert(&coRState.freeAreas, &freeArea->link);
-
-  // Curseur
-  coRState.cursor = wlr_cursor_create();
-  coRState.outputLayout = wlr_output_layout_create(display);
-  wlr_cursor_attach_output_layout(coRState.cursor, coRState.outputLayout);
 
   // Scene root for surface position
   coRState.scene = wlr_scene_create();
@@ -180,6 +200,10 @@ int main() {
   wl_signal_add(&layerShell->events.new_surface,
                 &coRState.newLayerSurfaceListener);
 
+  // Other protocols
+  wlr_viewporter_create(display);
+  wlr_fractional_scale_manager_v1_create(display, 1);
+
   // Socket for get apps
   const char *socket = wl_display_add_socket_auto(coRState.display);
   if (!socket) {
@@ -191,10 +215,12 @@ int main() {
 
   // Teste open app
   setenv("WAYLAND_DISPLAY", socket, true);
-  if (fork() == 0)
-    execlp("weston-terminal", "weston-terminal", NULL);
+  // if (fork() == 0)
+  //   execlp("weston-terminal", "weston-terminal", NULL);
   if (fork() == 0)
     execlp("quickshell", "quickshell", NULL);
+  // if (fork() == 0)
+  //   execlp("kitty", "kitty", NULL);
   wlr_log(WLR_INFO, "Running Wayland compositor on WAYLAND_DISPLAY=%s", socket);
 
   // 5.

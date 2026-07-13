@@ -19,7 +19,8 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
 
     if (event->keycode == 30) { // touche Q
       if (fork() == 0) {
-        execlp("weston-terminal", "weston-terminal", NULL);
+        // execlp("weston-terminal", "weston-terminal", NULL);
+        execlp("kitty", "kitty", NULL);
       }
       return;
     }
@@ -28,7 +29,7 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
   if (event->keycode == 125) // touche "super"
     superPressed = !superPressed;
 
-  superPressed = true; // Temp for testing
+  // superPressed = true; // Temp for testing
 
   // Vérifie si une surface à le focus
   if (!coRKeyboardI->coRState->focusedSurface) {
