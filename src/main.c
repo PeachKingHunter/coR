@@ -18,8 +18,8 @@
 #include <wlr/render/allocator.h>
 
 // Compositor
-#include <wlr/types/wlr_shm.h>
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_shm.h>
 #include <wlr/types/wlr_subcompositor.h>
 
 // Layer shell
@@ -81,23 +81,23 @@ int main() {
   coRState.cursor = wlr_cursor_create();
   coRState.outputLayout = wlr_output_layout_create(display);
   wlr_cursor_attach_output_layout(coRState.cursor, coRState.outputLayout);
-	// server.cursor_mgr = wlr_xcursor_manager_create(NULL, 24); // To add
+  // server.cursor_mgr = wlr_xcursor_manager_create(NULL, 24); // To add
 
   // 2.5.
   // Renderer
   coRState.renderer = wlr_renderer_autocreate(backend);
-	if (coRState.renderer == NULL) {
-		wlr_log(WLR_ERROR, "Error: rendererCreation");
+  if (coRState.renderer == NULL) {
+    wlr_log(WLR_ERROR, "Error: rendererCreation");
     exit(1);
-	}
+  }
   wlr_renderer_init_wl_display(coRState.renderer, display);
 
   // Allocator
   coRState.allocator = wlr_allocator_autocreate(backend, coRState.renderer);
-	if (coRState.allocator == NULL) {
-		wlr_log(WLR_ERROR, "Error: allocatorCreation");
+  if (coRState.allocator == NULL) {
+    wlr_log(WLR_ERROR, "Error: allocatorCreation");
     exit(1);
-	}
+  }
 
   // 2.7 - Compositor
   struct wlr_compositor *compositor =
@@ -107,7 +107,8 @@ int main() {
   coRState.compositor = compositor;
 
   wlr_subcompositor_create(display);
-  // wlr_data_device_manager_create(server.wl_display); // TO add late (clipboard)
+  // wlr_data_device_manager_create(server.wl_display); // TO add late
+  // (clipboard)
 
   struct wlr_shm *shm =
       wlr_shm_create_with_renderer(display, 2, coRState.renderer);
@@ -158,14 +159,8 @@ int main() {
   coRState.sceneLayout =
       wlr_scene_attach_output_layout(coRState.scene, coRState.outputLayout);
 
-  // Cursor Rect for render
-  float color[4] = {1, 0, 0, 1};
-  coRState.cursorScene =
-      wlr_scene_rect_create(&coRState.scene->tree, 10, 10, color);
-
-  // Layer shell
+  // Layer shell TODO: decomment & focused surface -> diffrenciate with xdgTopLevel
   struct wlr_layer_shell_v1 *layerShell = wlr_layer_shell_v1_create(display, 5);
-  // layerShell->events.new_surface
 
   // 3.
   coRState.newOutputListener.notify = newOutputHandler;
@@ -204,6 +199,30 @@ int main() {
   wlr_viewporter_create(display);
   wlr_fractional_scale_manager_v1_create(display, 1);
 
+  // Cursor Rect for render
+  float color[4] = {1, 0, 0, 1};
+  coRState.cursorScene =
+      wlr_scene_rect_create(&coRState.scene->tree, 10, 10, color);
+
+  // Workspaces
+  coRState.focusedWorkspaceNum = 0;
+  for (int i = 0; i < NB_WORKSPACE; i++) {
+    struct coR_workspace *workspace = coRState.workspaces + i;
+
+    wl_list_init(&workspace->xdgTopLevels);
+    workspace->currentOutput = NULL;
+    // workspace->posX = 2000 * i;
+    workspace->posX = 19204564; // Temp
+    workspace->posY = 0;
+    workspace->rootNode = wlr_scene_tree_create(&coRState.scene->tree);
+    if (workspace->rootNode == NULL)
+      exit(1);
+    wlr_scene_node_place_below(&workspace->rootNode->node,
+                               &coRState.cursorScene->node);
+    wlr_scene_node_set_position(&workspace->rootNode->node, workspace->posX,
+                                workspace->posY);
+  }
+
   // Socket for get apps
   const char *socket = wl_display_add_socket_auto(coRState.display);
   if (!socket) {
@@ -240,3 +259,9 @@ int main() {
   wlr_backend_destroy(backend);
   wl_display_destroy(display);
 }
+
+
+/* TODO: Erreur à réglé: 
+- Peut pas décaler un surface sur un workspace vide
+- Peut pas enlever la derniere surface d'un workspace sinon boucle infini
+*/

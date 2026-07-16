@@ -113,15 +113,18 @@ void inputsChangeSurfaceToFocus(struct coR_state *coRState,
     wlr_seat_pointer_clear_focus(coRState->seat);
   }
 
-  // Change focus
-  coRState->focusedSurface = surface;
+  // Change focus in case of XdgTopLevel
+  if (surface->data != NULL) {
+    printf("xdgTopLevelDetected To Focus\n");
+    coRState->focusedSurface = surface;
+  }
 
   if (keyboard) {
-    wlr_seat_keyboard_notify_enter(coRState->seat, coRState->focusedSurface,
+    wlr_seat_keyboard_notify_enter(coRState->seat, surface,
                                    keyboard->keycodes, keyboard->num_keycodes,
                                    &keyboard->modifiers);
   }
-  wlr_seat_pointer_notify_enter(coRState->seat, coRState->focusedSurface, 0, 0);
+  wlr_seat_pointer_notify_enter(coRState->seat, surface, 0, 0);
 
   printf("Focus changed\n");
 }

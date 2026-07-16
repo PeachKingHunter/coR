@@ -2,7 +2,9 @@
 #include "../coRXdgTopLevel.h"
 #include "coRInputs.h"
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <wayland-util.h>
 #include <wlr/types/wlr_cursor.h>
 
@@ -29,8 +31,9 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
   struct wlr_pointer_button_event *event = data;
 
   // -> Active/Désactive -> le resize d'un toplevel avec click droit + SUPER
-  if (superPressed && event->button == 273) {
-    if (event->state == WL_POINTER_BUTTON_STATE_PRESSED) {
+  if (event->button == 273) {
+    if (event->state == WL_POINTER_BUTTON_STATE_PRESSED && superPressed &&
+        coRState->focusedSurface) {
       resizingTopLevel = coRState->focusedSurface->data;
       startResizingCursorPosX = coRState->cursor->x;
       startResizingCursorPosY = coRState->cursor->y;
@@ -43,29 +46,28 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
       lastDeltaX = 0;
       lastDeltaY = 0;
 
-    } else if (event->state == WL_POINTER_BUTTON_STATE_RELEASED) {
+    } else if (event->state == WL_POINTER_BUTTON_STATE_RELEASED &&
+               resizingTopLevel != NULL) {
       resizingTopLevel = NULL;
     }
   }
 
   // -> Active/Désactive -> le déplacement d'un toplevel avec click left + SUPER
-  else if (superPressed && event->button == 272) {
-    if (event->state == WL_POINTER_BUTTON_STATE_PRESSED) {
+  else if (event->button == 272) {
+    if (event->state == WL_POINTER_BUTTON_STATE_PRESSED && superPressed &&
+        coRState->focusedSurface) {
       movingTopLevel = coRState->focusedSurface->data;
       startMovingPosX = coRState->cursor->x;
       startMovingPosY = coRState->cursor->y;
       return;
 
-    } else if (event->state == WL_POINTER_BUTTON_STATE_RELEASED) {
+    } else if (event->state == WL_POINTER_BUTTON_STATE_RELEASED &&
+               movingTopLevel != NULL) {
       // Variables
       int startPosX = movingTopLevel->posX;
       int startPosY = movingTopLevel->posY;
       int startSizeX = movingTopLevel->sizeX;
       int startSizeY = movingTopLevel->sizeY;
-
-      // Split existant surface
-      double cursorPosX = coRState->cursor->x;
-      double cursorPosY = coRState->cursor->y;
 
       // Change toplevel posX & posY
       int deltaX = coRState->cursor->x - startMovingPosX;
@@ -73,8 +75,16 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
       movingTopLevel->posX += deltaX;
       movingTopLevel->posY += deltaY;
 
+      struct coR_workspace *workspace =
+          coRState->workspaces + coRState->focusedWorkspaceNum;
+      struct wl_list *xdgTopLevelsList = &workspace->xdgTopLevels;
+
+      struct coR_workspace *lastWorkspace =
+          coRState->workspaces + movingTopLevel->onWorkspaceNum;
+      struct wl_list *lastXdgTopLevelsList = &lastWorkspace->xdgTopLevels;
+
       struct coR_xdg_toplevel *tmpXdgTopLevel;
-      wl_list_for_each(tmpXdgTopLevel, &coRState->xdgTopLevels, link) {
+      wl_list_for_each(tmpXdgTopLevel, xdgTopLevelsList, link) {
         // Skip himself
         if (tmpXdgTopLevel == movingTopLevel)
           continue;
@@ -86,21 +96,34 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
         int posY = tmpXdgTopLevel->posY;
         int sizeY = tmpXdgTopLevel->xdgTopLevel->current.height;
 
+        double cursorPosXInWorkspace =
+            coRState->cursor->x -
+            coRState->workspaces[coRState->focusedWorkspaceNum].posX;
+        double cursorPosYInWorkspace =
+            coRState->cursor->y -
+            coRState->workspaces[coRState->focusedWorkspaceNum].posY;
+
         // Test colisions curseur dans surface
-        if (cursorPosX < posX || cursorPosX > posX + sizeX ||
-            cursorPosY < posY || cursorPosY > posY + sizeY)
+        if (cursorPosXInWorkspace < posX ||
+            cursorPosXInWorkspace > posX + sizeX ||
+            cursorPosYInWorkspace < posY ||
+            cursorPosYInWorkspace > posY + sizeY)
           continue;
 
         // Split the surface in two
         splitXdgTopLevel(tmpXdgTopLevel, movingTopLevel);
+        // Place on same workspace
+        if (tmpXdgTopLevel->onWorkspaceNum != movingTopLevel->onWorkspaceNum) {
+          movingTopLevel->onWorkspaceNum = tmpXdgTopLevel->onWorkspaceNum;
+          wl_list_remove(&movingTopLevel->link);
+          wl_list_insert(&workspace->xdgTopLevels, &movingTopLevel->link);
+        }
 
         // TODO VERIF: resize all surface to take the place left
         // Resize on X axis
         if (startSizeX < startSizeY) {
           int side = 0;
-        takeEmptyAreaAxisX:
-          wl_list_for_each_reverse(tmpXdgTopLevel, &coRState->xdgTopLevels,
-                                   link) {
+          wl_list_for_each_reverse(tmpXdgTopLevel, lastXdgTopLevelsList, link) {
             // Variables
             int tmpPosX = tmpXdgTopLevel->posX;
             int tmpPosY = tmpXdgTopLevel->posY;
@@ -156,8 +179,7 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
 
         // Resize on Y axis
         int side = 0;
-        wl_list_for_each_reverse(tmpXdgTopLevel, &coRState->xdgTopLevels,
-                                 link) {
+        wl_list_for_each_reverse(tmpXdgTopLevel, lastXdgTopLevelsList, link) {
           // Variables
           int tmpPosX = tmpXdgTopLevel->posX;
           int tmpPosY = tmpXdgTopLevel->posY;
@@ -210,8 +232,61 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
 
         if (movingTopLevel == NULL)
           break;
-        else
-          goto takeEmptyAreaAxisX;
+
+        // Resize on X axis
+        side = 0;
+        wl_list_for_each_reverse(tmpXdgTopLevel, lastXdgTopLevelsList, link) {
+          // Variables
+          int tmpPosX = tmpXdgTopLevel->posX;
+          int tmpPosY = tmpXdgTopLevel->posY;
+          int tmpSizeX = tmpXdgTopLevel->sizeX;
+          int tmpSizeY = tmpXdgTopLevel->sizeY;
+
+          // Is resizable on the empty area
+          if (!(tmpPosY >= startPosY) ||
+              !(tmpPosY + tmpSizeY <= startPosY + startSizeY))
+            continue;
+
+          // Is side by side with it
+          // Left side
+          if (abs(tmpPosX + tmpSizeX - startPosX) < 5) {
+            if (side == 2)
+              continue;
+            else if (side == 0)
+              side = 1;
+          }
+
+          // Right side
+          else if (abs(startPosX + startSizeX - tmpPosX) < 5) {
+            if (side == 1)
+              continue;
+            else if (side == 0)
+              side = 2;
+          }
+
+          // Not side by side
+          else {
+            continue;
+          }
+
+          // Resize and move
+          if (startPosX < tmpPosX) {
+            struct wlr_scene_tree *sceneTree =
+                tmpXdgTopLevel->xdgTopLevel->base->data;
+            tmpXdgTopLevel->posX = startPosX;
+            wlr_scene_node_set_position(&sceneTree->node, tmpXdgTopLevel->posX,
+                                        tmpXdgTopLevel->posY);
+          }
+
+          tmpXdgTopLevel->sizeX += startSizeX;
+          wlr_xdg_toplevel_set_size(tmpXdgTopLevel->xdgTopLevel,
+                                    tmpXdgTopLevel->sizeX,
+                                    tmpXdgTopLevel->sizeY);
+
+          movingTopLevel = NULL;
+        }
+        if (movingTopLevel == NULL)
+          break;
       }
 
       // Pas de surface trouvé -> On la remet à sa position initial
@@ -249,6 +324,23 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
   wlr_cursor_move(coRState->cursor, &event->pointer->base, event->delta_x,
                   event->delta_y);
   wlr_scene_node_set_position(&coRState->cursorScene->node, posX, posY);
+
+  // -> Get the focused workspace
+  for (int i = 0; i < NB_WORKSPACE; i++) {
+    struct coR_workspace *currentWorkspace = coRState->workspaces + i;
+    if (currentWorkspace->currentOutput != NULL) {
+      if (currentWorkspace->posX <= posX &&
+          posX <=
+              currentWorkspace->posX + currentWorkspace->currentOutput->width &&
+          currentWorkspace->posY <= posY &&
+          posY <= currentWorkspace->posY +
+                      currentWorkspace->currentOutput->height) {
+        coRState->focusedWorkspaceNum = i;
+        printf("%d\n", i);
+        break;
+      }
+    }
+  }
 
   // -> Change le focus si souris sur surface
   double sX, sY;

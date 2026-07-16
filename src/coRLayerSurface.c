@@ -41,7 +41,6 @@ void mapLayerSurfaceHandler(struct wl_listener *listener, void *data) {
       wl_container_of(listener, coRLayerSurface, mapListener);
   struct wlr_layer_surface_v1 *layerSurface = coRLayerSurface->layerSurface;
 
-
   // TODO: add get focus
 }
 

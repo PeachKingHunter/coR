@@ -1,4 +1,5 @@
 #include "coROutput.h"
+#include "coRState.h"
 
 void outputFrameHandler(struct wl_listener *listener, void *data) {
   // printf("-> Render frame of an output\n");
@@ -100,6 +101,20 @@ void newOutputHandler(struct wl_listener *listener, void *data) {
   // Give on start focus if no one as
   if (coRState->focusedOutput == NULL)
     coRState->focusedOutput = output;
+
+  // Give a default workspace
+  int currentWorkspace = 0;
+  for (; currentWorkspace < NB_WORKSPACE; currentWorkspace++) {
+    if (coRState->workspaces[currentWorkspace].currentOutput == NULL)
+      break;
+  }
+  coRState->workspaces[currentWorkspace].currentOutput = coROutput->output;
+  coRState->workspaces[currentWorkspace].posX = outputLayoutOutput->x;
+  coRState->workspaces[currentWorkspace].posY = outputLayoutOutput->y;
+  wlr_scene_node_set_position(
+      &coRState->workspaces[currentWorkspace].rootNode->node,
+      coRState->workspaces[currentWorkspace].posX,
+      coRState->workspaces[currentWorkspace].posY);
 
   // Render and commit the output
   wlr_scene_output_commit(sceneOutput, NULL);

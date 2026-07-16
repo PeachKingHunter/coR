@@ -12,12 +12,11 @@ struct coR_xdg_toplevel {
   struct coR_state *coRState;
 
   // Surface arrangement
-  struct coR_xdg_toplevel *shrunkedTopLevel;
-  struct coR_xdg_toplevel *shrunkerTopLevel;
   int posX;
   int posY;
-  int sizeX;
-  int sizeY;
+  float sizeX;
+  float sizeY;
+  int onWorkspaceNum;
 
   // Listeners
   struct wl_listener mapListener;
@@ -31,7 +30,7 @@ struct coR_xdg_toplevel {
 
 // Methods
 void newXdgTopLevelHandler(struct wl_listener *listener, void *data);
-void splitXdgTopLevel(struct coR_xdg_toplevel *toSplit,
+int splitXdgTopLevel(struct coR_xdg_toplevel *toSplit,
                       struct coR_xdg_toplevel *newXdgTopLevel);
 void resizeTopLevel(struct coR_xdg_toplevel *resizingTopLevel,
                     struct coR_state *coRState, int startCursorPosX,

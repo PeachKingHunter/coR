@@ -9,7 +9,19 @@
 #include <wayland-util.h>
 #include <wlr/types/wlr_scene.h>
 
-// Structure
+#define NB_WORKSPACE 10 // 0 to 9
+
+// Structures
+
+struct coR_workspace {
+  struct wlr_output *currentOutput;
+  struct wlr_scene_tree *rootNode;
+  struct wl_list xdgTopLevels;
+
+  int posX;
+  int posY;
+};
+
 struct coR_state {
   // Main components
   struct wl_display *display;
@@ -25,9 +37,14 @@ struct coR_state {
   // Placement in output
   struct wl_list freeAreas;
 
+  // Workspaces
+  struct coR_workspace workspaces[NB_WORKSPACE];
+
   // Focus
-  struct wlr_surface *focusedSurface;
+  struct wlr_surface *focusedSurface; // TODO: separate focusedTopLevel &
+                                      // focusedSurface due to subsurfaces
   struct wlr_output *focusedOutput;
+  int focusedWorkspaceNum;
 
   // Components for render outputs
   struct wlr_renderer *renderer;
