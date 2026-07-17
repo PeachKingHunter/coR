@@ -26,6 +26,7 @@
 #include <wlr/types/wlr_layer_shell_v1.h>
 
 // Other protocoles
+#include <wlr/types/wlr_cursor_shape_v1.h> // for hyprpaper cursor_shape_manager
 #include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/types/wlr_viewporter.h>
 
@@ -36,6 +37,9 @@
 
 // LibC
 #include <unistd.h> // Forks
+
+#define CURSOR_SHAPE_MANAGER_V1_VERSION 2
+
 
 int main() {
   // More logs
@@ -101,7 +105,7 @@ int main() {
 
   // 2.7 - Compositor
   struct wlr_compositor *compositor =
-      wlr_compositor_create(display, 5, coRState.renderer);
+      wlr_compositor_create(display, 6, coRState.renderer);
   if (compositor == NULL)
     exit(1);
   coRState.compositor = compositor;
@@ -110,14 +114,14 @@ int main() {
   // wlr_data_device_manager_create(server.wl_display); // TO add late
   // (clipboard)
 
-  struct wlr_shm *shm =
-      wlr_shm_create_with_renderer(display, 2, coRState.renderer);
-  if (shm == NULL)
-    exit(1);
+  // struct wlr_shm *shm =
+  //     wlr_shm_create_with_renderer(display, 2, coRState.renderer);
+  // if (shm == NULL)
+  //   exit(1);
 
-  wlr_renderer_init_wl_shm(coRState.renderer, display);
+  // wlr_renderer_init_wl_shm(coRState.renderer, display);
 
-  struct wlr_xdg_shell *xdgShell = wlr_xdg_shell_create(display, 3);
+  struct wlr_xdg_shell *xdgShell = wlr_xdg_shell_create(display, 6);
   if (xdgShell == NULL)
     exit(1);
 
@@ -159,7 +163,8 @@ int main() {
   coRState.sceneLayout =
       wlr_scene_attach_output_layout(coRState.scene, coRState.outputLayout);
 
-  // Layer shell TODO: decomment & focused surface -> diffrenciate with xdgTopLevel
+  // Layer shell TODO: decomment & focused surface -> diffrenciate with
+  // xdgTopLevel
   struct wlr_layer_shell_v1 *layerShell = wlr_layer_shell_v1_create(display, 5);
 
   // 3.
@@ -196,6 +201,7 @@ int main() {
                 &coRState.newLayerSurfaceListener);
 
   // Other protocols
+  wlr_cursor_shape_manager_v1_create(display, CURSOR_SHAPE_MANAGER_V1_VERSION);
   wlr_viewporter_create(display);
   wlr_fractional_scale_manager_v1_create(display, 1);
 
@@ -260,8 +266,8 @@ int main() {
   wl_display_destroy(display);
 }
 
-
-/* TODO: Erreur à réglé: 
+/* TODO: Erreur à réglé:
 - Peut pas décaler un surface sur un workspace vide
 - Peut pas enlever la derniere surface d'un workspace sinon boucle infini
+- Les surfaces ne se resize plus quand on en ferme une autre !!!!!!
 */
