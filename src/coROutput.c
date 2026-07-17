@@ -67,6 +67,7 @@ void newOutputHandler(struct wl_listener *listener, void *data) {
 
   coROutput->output = output;
   coROutput->coRState = coRState;
+  output->data = coROutput;
 
   // 2.
   coROutput->destroyListener.notify = outputDestroyHandler;

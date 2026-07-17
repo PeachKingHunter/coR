@@ -336,7 +336,6 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
           posY <= currentWorkspace->posY +
                       currentWorkspace->currentOutput->height) {
         coRState->focusedWorkspaceNum = i;
-        printf("%d\n", i);
         break;
       }
     }

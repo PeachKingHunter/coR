@@ -126,5 +126,5 @@ void inputsChangeSurfaceToFocus(struct coR_state *coRState,
   }
   wlr_seat_pointer_notify_enter(coRState->seat, surface, 0, 0);
 
-  printf("Focus changed\n");
+  // printf("Focus changed\n"); TODO: not change focus if layerShell already focused
 }

@@ -244,6 +244,8 @@ int main() {
   //   execlp("weston-terminal", "weston-terminal", NULL);
   if (fork() == 0)
     execlp("quickshell", "quickshell", NULL);
+  if (fork() == 0)
+    execlp("wpaperd", "wpaperd", NULL);
   // if (fork() == 0)
   //   execlp("kitty", "kitty", NULL);
   wlr_log(WLR_INFO, "Running Wayland compositor on WAYLAND_DISPLAY=%s", socket);
@@ -268,6 +270,5 @@ int main() {
 
 /* TODO: Erreur à réglé:
 - Peut pas décaler un surface sur un workspace vide
-- Peut pas enlever la derniere surface d'un workspace sinon boucle infini
-- Les surfaces ne se resize plus quand on en ferme une autre !!!!!!
+- Peut pas enlever la derniere surface d'un workspace sinon boucle infini / crash
 */

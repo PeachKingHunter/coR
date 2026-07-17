@@ -1,10 +1,12 @@
 #include "coRLayerSurface.h"
+#include "coROutput.h"
 #include "coRState.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <wayland-server-core.h>
 #include <wayland-util.h>
+#include <wlr-layer-shell-unstable-v1-protocol.h>
 
 void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   // printf("-> commit layer surface\n");
@@ -13,24 +15,57 @@ void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   struct coR_layer_surface *coRLayerSurface =
       wl_container_of(listener, coRLayerSurface, commitListener);
   struct wlr_layer_surface_v1 *layerSurface = coRLayerSurface->layerSurface;
-  struct coR_state *coRState = coRLayerSurface->coRState;
+  // struct coR_state *coRState = coRLayerSurface->coRState;
+  struct coR_output *wantedCoROutput = layerSurface->output->data;
 
   if (!layerSurface->initialized || layerSurface->configured)
     return;
 
   printf("-> first commit layer surface\n");
+
+  // Get size wanted
   int sizeX = layerSurface->current.desired_width;
+  if (sizeX == 0)
+    sizeX = layerSurface->output->width;
+
   int sizeY = layerSurface->current.desired_height;
+  if (sizeY == 0)
+    sizeY = layerSurface->output->height;
 
-  wlr_layer_surface_v1_configure(layerSurface, sizeX, sizeY);
+  // TODO:Get pos from anchor
+  int posX = 0;
+  int posY = 0;
 
-  struct wlr_box full_area = {.x = 0, .y = 0, .width = 0, .height = 0};
-  struct wlr_box usable_area = {.x = 0,
-                                .y = 0,
-                                .width = coRState->focusedOutput->width,
-                                .height = coRState->focusedOutput->height};
+  // TODO here
+  //
+
+  posX += wantedCoROutput->sceneOutput->x;
+  posY += wantedCoROutput->sceneOutput->y;
+
+  printf("wanted size: %d, %d\n", sizeX, sizeY);
+  printf("wanted pos: %d, %d\n", posX, posY);
+
+  wlr_layer_surface_v1_configure(layerSurface, sizeX, sizeY); // TODO: mettre
+  // autre par en global pour toute les layerSurfaces
+
+  // Get the workspace wanted by itself
+  struct wlr_box full_area = {.x = posX,
+                              .y = posY,
+                              .width = layerSurface->output->width,
+                              .height = layerSurface->output->height};
+  struct wlr_box usable_area = {.x = posX,
+                                .y = posY,
+                                .width = layerSurface->output->width,
+                                .height = layerSurface->output->height};
   wlr_scene_layer_surface_v1_configure(coRLayerSurface->sceneLayerSurface,
                                        &full_area, &usable_area);
+  if (layerSurface->current.layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
+    wlr_scene_node_lower_to_bottom(
+        &coRLayerSurface->sceneLayerSurface->tree->node);
+  } else {
+    wlr_scene_node_raise_to_top(
+        &coRLayerSurface->sceneLayerSurface->tree->node);
+  }
 }
 
 void mapLayerSurfaceHandler(struct wl_listener *listener, void *data) {

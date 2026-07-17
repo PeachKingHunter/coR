@@ -116,17 +116,21 @@ static void destroyXdgTopLevelHandler(struct wl_listener *listener,
   // 0.
   // TODO VERIF: resize all surface to take the place left
   // Variables
-
   struct coR_xdg_toplevel *movingTopLevel = coRXdgTopLevel;
   int startPosX = movingTopLevel->posX;
   int startPosY = movingTopLevel->posY;
   int startSizeX = movingTopLevel->sizeX;
   int startSizeY = movingTopLevel->sizeY;
+
+  struct coR_workspace *lastWorkspace =
+      coRState->workspaces + movingTopLevel->onWorkspaceNum;
+  struct wl_list *lastXdgTopLevelsList = &lastWorkspace->xdgTopLevels;
+
   // Resize on X axis
   struct coR_xdg_toplevel *tmpXdgTopLevel;
   if (startSizeX < startSizeY) {
     int side = 0;
-    wl_list_for_each_reverse(tmpXdgTopLevel, &coRState->xdgTopLevels, link) {
+    wl_list_for_each_reverse(tmpXdgTopLevel, lastXdgTopLevelsList, link) {
       // Variables
       int tmpPosX = tmpXdgTopLevel->posX;
       int tmpPosY = tmpXdgTopLevel->posY;
@@ -181,7 +185,7 @@ static void destroyXdgTopLevelHandler(struct wl_listener *listener,
 
   // Resize on Y axis
   int side = 0;
-  wl_list_for_each_reverse(tmpXdgTopLevel, &coRState->xdgTopLevels, link) {
+  wl_list_for_each_reverse(tmpXdgTopLevel, lastXdgTopLevelsList, link) {
     // Variables
     int tmpPosX = tmpXdgTopLevel->posX;
     int tmpPosY = tmpXdgTopLevel->posY;
@@ -236,7 +240,7 @@ static void destroyXdgTopLevelHandler(struct wl_listener *listener,
 
   // Resize on X axis
   side = 0;
-  wl_list_for_each_reverse(tmpXdgTopLevel, &coRState->xdgTopLevels, link) {
+  wl_list_for_each_reverse(tmpXdgTopLevel, lastXdgTopLevelsList, link) {
     // Variables
     int tmpPosX = tmpXdgTopLevel->posX;
     int tmpPosY = tmpXdgTopLevel->posY;
