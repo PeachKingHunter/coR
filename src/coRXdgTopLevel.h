@@ -30,10 +30,28 @@ struct coR_xdg_toplevel {
 
 // Methods
 void newXdgTopLevelHandler(struct wl_listener *listener, void *data);
+
+/*
+  Just change the size of an xdgTopLevel with a coR_xdg_toplevel
+*/
+int setXdgTopLevelSize(struct coR_xdg_toplevel *xdgTopLevel, float newSizeX, float newSizeY);
+int setXdgTopLevelPos(struct coR_xdg_toplevel *xdgTopLevel, float newPosX, float newPosY);
+
 int splitXdgTopLevel(struct coR_xdg_toplevel *toSplit,
-                      struct coR_xdg_toplevel *newXdgTopLevel);
+                     struct coR_xdg_toplevel *newXdgTopLevel);
 void resizeTopLevel(struct coR_xdg_toplevel *resizingTopLevel,
                     struct coR_state *coRState, int startCursorPosX,
                     int startCursorPosY, int startSizeX, int startSizeY,
                     int startPosX, int startPosY);
+
+/*
+  Resize all the surface in xdgTopLevelsList (on X/Y axis) for take an free area
+  determined by start....X/Y
+  -> Return 0 for no changement
+  -> Return 1 for minimum one surface have size changed
+*/
+int resizeXOnEmptyArea(int startPosX, int startPosY, int startSizeX,
+                       int startSizeY, struct wl_list *xdgTopLevelsList);
+int resizeYOnEmptyArea(int startPosX, int startPosY, int startSizeX,
+                       int startSizeY, struct wl_list *xdgTopLevelsList);
 #endif

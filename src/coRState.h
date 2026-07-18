@@ -30,19 +30,16 @@ struct coR_state {
 
   // For surfaces
   struct wlr_compositor *compositor;
-  struct wl_list xdgTopLevels;
   struct wlr_scene *scene;
   struct wlr_scene_output_layout *sceneLayout;
-
-  // Placement in output
-  struct wl_list freeAreas;
 
   // Workspaces
   struct coR_workspace workspaces[NB_WORKSPACE];
 
   // Focus
-  struct wlr_surface *focusedSurface; // TODO: separate focusedTopLevel &
-                                      // focusedSurface due to subsurfaces
+  struct wlr_surface *focusedSurface;
+  // TODO: separate focusedTopLevel &
+  // focusedSurface due to subsurfaces & layerSurface
   struct wlr_output *focusedOutput;
   int focusedWorkspaceNum;
 
@@ -60,27 +57,14 @@ struct coR_state {
 
   // Listeners
   struct wl_listener newOutputListener;
-  // struct wl_listener newSurfaceListener; // For normal surface (wayland but
-  // not used because of xdgTopLevel)
   struct wl_listener newXdgTopLevelListener;
+  struct wl_listener newLayerSurfaceListener; // For layerShell
 
   struct wl_listener newInputListener;
-
   struct wl_listener cursorButtonListener;
   struct wl_listener cursorMotionListener;
   struct wl_listener cursorMotionAbsoluteListener;
   struct wl_listener cursorAxisListener;
-
-  struct wl_listener newLayerSurfaceListener; // For layerShell
-};
-
-struct free_area {
-  int posX;
-  int posY;
-  int sizeX;
-  int sizeY;
-
-  struct wl_list link;
 };
 
 #endif

@@ -38,8 +38,11 @@
 // LibC
 #include <unistd.h> // Forks
 
+#define COMPOSITOR_VERSION 6
+#define WM_BASE_VERSION 7 // XdgShell
 #define CURSOR_SHAPE_MANAGER_V1_VERSION 2
-
+#define LAYER_SHELL_VERSION 5
+#define FRACTIONAL_SCALE_VERSION 1
 
 int main() {
   // More logs
@@ -49,24 +52,34 @@ int main() {
   0.Structure for server's components, listeners
   1.Create a Wayland display
   2.Create a wlroots backend (graphical)
-  2.1 Inputs managing
-  2.5.Render's main components
-  2.7 Compositor for surface managing
-  3.Set up event listeners
-  4.Start the backend
-  5.Run the Wayland event loop
+  3.Inputs managing
+    3.1.Cursor
+  4.Render's main components
+    4.1 Renderer
+    4.2 Allocator
+  5.surface managing
+    5.1 Compositor & SubCompositor
+    5.2 XdgTopLevel
+    5.3 Scene root for surface position
+      5.3.1 Cursor Rect in scene for render cursor
+  6.Set up event listeners
+  7.Other protocols
+  8.Workspaces
+  9.Start the backend
+  10.Run the Wayland event loop
+  11.Clear all
   */
 
-  // 0.
+  // 0. Main struture
   struct coR_state coRState = {0};
 
-  // 1.
+  // 1. Wayland display
   struct wl_display *display = wl_display_create();
   if (!display)
     exit(1);
   coRState.display = display;
 
-  // 2.
+  // 2. Wlroots backend
   struct wl_event_loop *eventLoop = wl_display_get_event_loop(display);
 
   struct wlr_backend *backend = wlr_backend_autocreate(eventLoop, NULL);
@@ -74,21 +87,21 @@ int main() {
     exit(1);
   coRState.backend = backend;
 
-  // 2.1
+  // 3. Inputs
   coRState.session = wlr_session_create(eventLoop);
   coRState.seat = wlr_seat_create(display, "cearT0");
 
-  // Set capabilities
+  //  Set capabilities
   wlr_seat_set_capabilities(coRState.seat, WL_SEAT_CAPABILITY_KEYBOARD |
                                                WL_SEAT_CAPABILITY_POINTER);
-  // Curseur
+  //  3.1 Curseur
   coRState.cursor = wlr_cursor_create();
   coRState.outputLayout = wlr_output_layout_create(display);
   wlr_cursor_attach_output_layout(coRState.cursor, coRState.outputLayout);
   // server.cursor_mgr = wlr_xcursor_manager_create(NULL, 24); // To add
 
-  // 2.5.
-  // Renderer
+  // 4. Render components
+  //  4.1 Renderer
   coRState.renderer = wlr_renderer_autocreate(backend);
   if (coRState.renderer == NULL) {
     wlr_log(WLR_ERROR, "Error: rendererCreation");
@@ -96,84 +109,54 @@ int main() {
   }
   wlr_renderer_init_wl_display(coRState.renderer, display);
 
-  // Allocator
+  //  4.2 Allocator
   coRState.allocator = wlr_allocator_autocreate(backend, coRState.renderer);
   if (coRState.allocator == NULL) {
     wlr_log(WLR_ERROR, "Error: allocatorCreation");
     exit(1);
   }
 
-  // 2.7 - Compositor
+  // 5. Compositor
+  //  5.1 Compositor & SubCompositor
   struct wlr_compositor *compositor =
-      wlr_compositor_create(display, 6, coRState.renderer);
+      wlr_compositor_create(display, COMPOSITOR_VERSION, coRState.renderer);
   if (compositor == NULL)
     exit(1);
   coRState.compositor = compositor;
 
-  wlr_subcompositor_create(display);
-  // wlr_data_device_manager_create(server.wl_display); // TO add late
-  // (clipboard)
+  struct wlr_subcompositor *subCompositor = wlr_subcompositor_create(display);
+  if (subCompositor == NULL)
+    exit(1);
 
-  // struct wlr_shm *shm =
-  //     wlr_shm_create_with_renderer(display, 2, coRState.renderer);
-  // if (shm == NULL)
-  //   exit(1);
-
-  // wlr_renderer_init_wl_shm(coRState.renderer, display);
-
-  struct wlr_xdg_shell *xdgShell = wlr_xdg_shell_create(display, 6);
+  //  5.2 XdgTopLevel & LayerSurface
+  struct wlr_xdg_shell *xdgShell = wlr_xdg_shell_create(display, WM_BASE_VERSION);
   if (xdgShell == NULL)
     exit(1);
 
-  wl_list_init(&coRState.xdgTopLevels); // Liste of surfaces
-
-  // List of free area for new surfaces
-  // A default surface on the whole screen
-  wl_list_init(&coRState.freeAreas);
-  struct free_area *freeArea = malloc(sizeof(struct free_area));
-  if (freeArea == NULL)
+  struct wlr_layer_shell_v1 *layerShell = wlr_layer_shell_v1_create(display, LAYER_SHELL_VERSION);
+  if (layerShell == NULL)
     exit(1);
-  freeArea->posX = 0;
-  freeArea->posY = 0;
-  freeArea->sizeX = 0; // Auto Screen's size
-  freeArea->sizeY = 0; // Auto Screen's size
-  wl_list_insert(&coRState.freeAreas, &freeArea->link);
+  // Layer shell TODO: focused surface -> diffrenciate with
+  // xdgTopLevel
 
-  // Test of predef position for surfaces
-  // struct free_area *freeArea = malloc(sizeof(struct free_area));
-  // if (freeArea == NULL)
-  //   exit(1);
-  // freeArea->posX = 300;
-  // freeArea->posY = 40;
-  // freeArea->sizeX = 300; // Auto Screen's size
-  // freeArea->sizeY = 200; // Auto Screen's size
-  // wl_list_insert(&coRState.freeAreas, &freeArea->link);
-  //
-  // freeArea = malloc(sizeof(struct free_area));
-  // if (freeArea == NULL)
-  //   exit(1);
-  // freeArea->posX = 52;
-  // freeArea->posY = 10;
-  // freeArea->sizeX = 200; // Auto Screen's size
-  // freeArea->sizeY = 500; // Auto Screen's size
-  // wl_list_insert(&coRState.freeAreas, &freeArea->link);
-
-  // Scene root for surface position
+  //  5.3 Scene root for surface position
   coRState.scene = wlr_scene_create();
+  if (coRState.scene == NULL)
+    exit(1);
+
   coRState.sceneLayout =
       wlr_scene_attach_output_layout(coRState.scene, coRState.outputLayout);
+  if (coRState.sceneLayout == NULL)
+    exit(1);
 
-  // Layer shell TODO: decomment & focused surface -> diffrenciate with
-  // xdgTopLevel
-  struct wlr_layer_shell_v1 *layerShell = wlr_layer_shell_v1_create(display, 5);
+  //    5.3.1 Cursor Rect in scene for render cursor (temp I think)
+  float color[4] = {1, 0, 0, 1};
+  coRState.cursorScene =
+      wlr_scene_rect_create(&coRState.scene->tree, 10, 10, color);
 
-  // 3.
+  // 6. Listeners
   coRState.newOutputListener.notify = newOutputHandler;
   wl_signal_add(&backend->events.new_output, &coRState.newOutputListener);
-
-  // coRState.newSurfaceListener.notify = newSurfaceHandler;
-  // wl_signal_add(&compositor->events.new_surface,
-  // &coRState.newSurfaceListener);
 
   coRState.newXdgTopLevelListener.notify = newXdgTopLevelHandler;
   wl_signal_add(&xdgShell->events.new_toplevel,
@@ -200,17 +183,14 @@ int main() {
   wl_signal_add(&layerShell->events.new_surface,
                 &coRState.newLayerSurfaceListener);
 
-  // Other protocols
+  // 7. Other protocols
   wlr_cursor_shape_manager_v1_create(display, CURSOR_SHAPE_MANAGER_V1_VERSION);
   wlr_viewporter_create(display);
-  wlr_fractional_scale_manager_v1_create(display, 1);
+  wlr_fractional_scale_manager_v1_create(display, FRACTIONAL_SCALE_VERSION);
+  // wlr_data_device_manager_create(server.wl_display); // TO add late
+  // (clipboard)
 
-  // Cursor Rect for render
-  float color[4] = {1, 0, 0, 1};
-  coRState.cursorScene =
-      wlr_scene_rect_create(&coRState.scene->tree, 10, 10, color);
-
-  // Workspaces
+  // 8. Workspaces's structure initialisation
   coRState.focusedWorkspaceNum = 0;
   for (int i = 0; i < NB_WORKSPACE; i++) {
     struct coR_workspace *workspace = coRState.workspaces + i;
@@ -229,19 +209,16 @@ int main() {
                                 workspace->posY);
   }
 
-  // Socket for get apps
+  // 9. Backend & Socket for get apps
   const char *socket = wl_display_add_socket_auto(coRState.display);
   if (!socket) {
     exit(1);
   }
 
-  // 4.
   wlr_backend_start(backend);
 
   // Teste open app
   setenv("WAYLAND_DISPLAY", socket, true);
-  // if (fork() == 0)
-  //   execlp("weston-terminal", "weston-terminal", NULL);
   if (fork() == 0)
     execlp("quickshell", "quickshell", NULL);
   if (fork() == 0)
@@ -250,18 +227,22 @@ int main() {
   //   execlp("kitty", "kitty", NULL);
   wlr_log(WLR_INFO, "Running Wayland compositor on WAYLAND_DISPLAY=%s", socket);
 
-  // 5.
+  // 10. Launch the compositor
   wl_display_run(display);
 
-  // Clear
+  // 11. Clear all
   wl_list_remove(&coRState.newOutputListener.link);
-  wl_list_remove(&coRState.newLayerSurfaceListener.link);
   wl_list_remove(&coRState.newXdgTopLevelListener.link);
   wl_list_remove(&coRState.newInputListener.link);
+  wl_list_remove(&coRState.cursorButtonListener.link);
+  wl_list_remove(&coRState.cursorMotionListener.link);
+  wl_list_remove(&coRState.cursorMotionAbsoluteListener.link);
+  wl_list_remove(&coRState.newLayerSurfaceListener.link);
 
   wlr_scene_node_destroy(&coRState.scene->tree.node);
   wlr_allocator_destroy(coRState.allocator);
   wlr_renderer_destroy(coRState.renderer);
+  wlr_cursor_destroy(coRState.cursor);
   wlr_seat_destroy(coRState.seat);
   wlr_session_destroy(coRState.session);
   wlr_backend_destroy(backend);
@@ -270,5 +251,6 @@ int main() {
 
 /* TODO: Erreur à réglé:
 - Peut pas décaler un surface sur un workspace vide
-- Peut pas enlever la derniere surface d'un workspace sinon boucle infini / crash
+- Peut pas enlever la derniere surface d'un workspace sinon boucle infini /
+crash
 */

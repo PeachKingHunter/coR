@@ -74,7 +74,7 @@ void mapLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   // Variables
   struct coR_layer_surface *coRLayerSurface =
       wl_container_of(listener, coRLayerSurface, mapListener);
-  struct wlr_layer_surface_v1 *layerSurface = coRLayerSurface->layerSurface;
+  // struct wlr_layer_surface_v1 *layerSurface = coRLayerSurface->layerSurface;
 
   // TODO: add get focus
 }
@@ -102,7 +102,7 @@ void destroyLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   // Variables
   struct coR_layer_surface *coRLayerSurface =
       wl_container_of(listener, coRLayerSurface, destroyListener);
-  struct wlr_layer_surface_v1 *layerSurface = coRLayerSurface->layerSurface;
+  // struct wlr_layer_surface_v1 *layerSurface = coRLayerSurface->layerSurface;
 
   // unlink listeners
   wl_list_remove(&coRLayerSurface->commitListener.link);

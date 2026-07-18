@@ -83,6 +83,7 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
           coRState->workspaces + movingTopLevel->onWorkspaceNum;
       struct wl_list *lastXdgTopLevelsList = &lastWorkspace->xdgTopLevels;
 
+      // Search an surface below the cursor
       struct coR_xdg_toplevel *tmpXdgTopLevel;
       wl_list_for_each(tmpXdgTopLevel, xdgTopLevelsList, link) {
         // Skip himself
@@ -119,174 +120,28 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
           wl_list_insert(&workspace->xdgTopLevels, &movingTopLevel->link);
         }
 
-        // TODO VERIF: resize all surface to take the place left
-        // Resize on X axis
+        // Resize all surface to take the place left | TODO -> VERIF:
         if (startSizeX < startSizeY) {
-          int side = 0;
-          wl_list_for_each_reverse(tmpXdgTopLevel, lastXdgTopLevelsList, link) {
-            // Variables
-            int tmpPosX = tmpXdgTopLevel->posX;
-            int tmpPosY = tmpXdgTopLevel->posY;
-            int tmpSizeX = tmpXdgTopLevel->sizeX;
-            int tmpSizeY = tmpXdgTopLevel->sizeY;
-
-            // Is resizable on the empty area
-            if (!(tmpPosY >= startPosY) ||
-                !(tmpPosY + tmpSizeY <= startPosY + startSizeY))
-              continue;
-
-            // Is side by side with it
-            // Left side
-            if (abs(tmpPosX + tmpSizeX - startPosX) < 5) {
-              if (side == 2)
-                continue;
-              else if (side == 0)
-                side = 1;
-            }
-
-            // Right side
-            else if (abs(startPosX + startSizeX - tmpPosX) < 5) {
-              if (side == 1)
-                continue;
-              else if (side == 0)
-                side = 2;
-            }
-
-            // Not side by side
-            else {
-              continue;
-            }
-
-            // Resize and move
-            if (startPosX < tmpPosX) {
-              struct wlr_scene_tree *sceneTree =
-                  tmpXdgTopLevel->xdgTopLevel->base->data;
-              tmpXdgTopLevel->posX = startPosX;
-              wlr_scene_node_set_position(
-                  &sceneTree->node, tmpXdgTopLevel->posX, tmpXdgTopLevel->posY);
-            }
-
-            tmpXdgTopLevel->sizeX += startSizeX;
-            wlr_xdg_toplevel_set_size(tmpXdgTopLevel->xdgTopLevel,
-                                      tmpXdgTopLevel->sizeX,
-                                      tmpXdgTopLevel->sizeY);
-
+          // Resize on X axis
+          if (resizeXOnEmptyArea(startPosX, startPosY, startSizeX, startSizeY,
+                                 lastXdgTopLevelsList)) {
             movingTopLevel = NULL;
-          }
-          if (movingTopLevel == NULL)
             break;
+          }
         }
 
         // Resize on Y axis
-        int side = 0;
-        wl_list_for_each_reverse(tmpXdgTopLevel, lastXdgTopLevelsList, link) {
-          // Variables
-          int tmpPosX = tmpXdgTopLevel->posX;
-          int tmpPosY = tmpXdgTopLevel->posY;
-          int tmpSizeX = tmpXdgTopLevel->sizeX;
-          int tmpSizeY = tmpXdgTopLevel->sizeY;
-
-          // Is resizable on the empty area
-          if (!(tmpPosX >= startPosX) ||
-              !(tmpPosX + tmpSizeX <= startPosX + startSizeX))
-            continue;
-
-          // Is side by side with it
-          // Top side
-          if (abs(tmpPosY + tmpSizeY - startPosY) < 5) {
-            if (side == 2)
-              continue;
-            else if (side == 0)
-              side = 1;
-          }
-
-          // Bottom side
-          else if (abs(startPosY + startSizeY - tmpPosY) < 5) {
-            if (side == 1)
-              continue;
-            else if (side == 0)
-              side = 2;
-          }
-
-          // Not side by side
-          else {
-            continue;
-          }
-
-          // Resize and move
-          if (startPosY < tmpPosY) {
-            struct wlr_scene_tree *sceneTree =
-                tmpXdgTopLevel->xdgTopLevel->base->data;
-            tmpXdgTopLevel->posY = startPosY;
-            wlr_scene_node_set_position(&sceneTree->node, tmpXdgTopLevel->posX,
-                                        tmpXdgTopLevel->posY);
-          }
-
-          tmpXdgTopLevel->sizeY += startSizeY;
-          wlr_xdg_toplevel_set_size(tmpXdgTopLevel->xdgTopLevel,
-                                    tmpXdgTopLevel->sizeX,
-                                    tmpXdgTopLevel->sizeY);
-
+        if (resizeYOnEmptyArea(startPosX, startPosY, startSizeX, startSizeY,
+                               lastXdgTopLevelsList)) {
           movingTopLevel = NULL;
-        }
-
-        if (movingTopLevel == NULL)
           break;
+        }
 
         // Resize on X axis
-        side = 0;
-        wl_list_for_each_reverse(tmpXdgTopLevel, lastXdgTopLevelsList, link) {
-          // Variables
-          int tmpPosX = tmpXdgTopLevel->posX;
-          int tmpPosY = tmpXdgTopLevel->posY;
-          int tmpSizeX = tmpXdgTopLevel->sizeX;
-          int tmpSizeY = tmpXdgTopLevel->sizeY;
-
-          // Is resizable on the empty area
-          if (!(tmpPosY >= startPosY) ||
-              !(tmpPosY + tmpSizeY <= startPosY + startSizeY))
-            continue;
-
-          // Is side by side with it
-          // Left side
-          if (abs(tmpPosX + tmpSizeX - startPosX) < 5) {
-            if (side == 2)
-              continue;
-            else if (side == 0)
-              side = 1;
-          }
-
-          // Right side
-          else if (abs(startPosX + startSizeX - tmpPosX) < 5) {
-            if (side == 1)
-              continue;
-            else if (side == 0)
-              side = 2;
-          }
-
-          // Not side by side
-          else {
-            continue;
-          }
-
-          // Resize and move
-          if (startPosX < tmpPosX) {
-            struct wlr_scene_tree *sceneTree =
-                tmpXdgTopLevel->xdgTopLevel->base->data;
-            tmpXdgTopLevel->posX = startPosX;
-            wlr_scene_node_set_position(&sceneTree->node, tmpXdgTopLevel->posX,
-                                        tmpXdgTopLevel->posY);
-          }
-
-          tmpXdgTopLevel->sizeX += startSizeX;
-          wlr_xdg_toplevel_set_size(tmpXdgTopLevel->xdgTopLevel,
-                                    tmpXdgTopLevel->sizeX,
-                                    tmpXdgTopLevel->sizeY);
-
-          movingTopLevel = NULL;
-        }
-        if (movingTopLevel == NULL)
-          break;
+        resizeXOnEmptyArea(startPosX, startPosY, startSizeX, startSizeY,
+                           lastXdgTopLevelsList);
+        movingTopLevel = NULL;
+        break;
       }
 
       // Pas de surface trouvé -> On la remet à sa position initial
