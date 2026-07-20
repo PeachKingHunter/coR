@@ -9,7 +9,7 @@
 #include <wlr-layer-shell-unstable-v1-protocol.h>
 
 void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
-  // printf("-> commit layer surface\n");
+  printf("-> commitLayerSurfaceHandler\n");
 
   // Variables
   struct coR_layer_surface *coRLayerSurface =
@@ -69,7 +69,7 @@ void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
 }
 
 void mapLayerSurfaceHandler(struct wl_listener *listener, void *data) {
-  printf("-> map layer surface\n");
+  printf("-> mapLayerSurfaceHandler\n");
 
   // Variables
   struct coR_layer_surface *coRLayerSurface =
@@ -80,7 +80,7 @@ void mapLayerSurfaceHandler(struct wl_listener *listener, void *data) {
 }
 
 void unmapLayerSurfaceHandler(struct wl_listener *listener, void *data) {
-  printf("-> unmap layer surface\n");
+  printf("-> unmapLayerSurfaceHandler\n");
 
   // Variables
   struct coR_layer_surface *coRLayerSurface =
@@ -97,7 +97,7 @@ void unmapLayerSurfaceHandler(struct wl_listener *listener, void *data) {
 }
 
 void destroyLayerSurfaceHandler(struct wl_listener *listener, void *data) {
-  printf("-> destroy layer surface\n");
+  printf("-> destroyLayerSurfaceHandler\n");
 
   // Variables
   struct coR_layer_surface *coRLayerSurface =
@@ -115,7 +115,7 @@ void destroyLayerSurfaceHandler(struct wl_listener *listener, void *data) {
 }
 
 void newLayerSurfaceHandler(struct wl_listener *listener, void *data) {
-  printf("-> obtain new layer surface\n");
+  printf("-> newLayerSurfaceHandler\n");
 
   // Variables
   struct coR_state *coRState =

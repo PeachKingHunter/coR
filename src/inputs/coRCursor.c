@@ -23,7 +23,7 @@ extern int lastDeltaY;
 
 // ---- ## Curseur ## ---- //
 void cursorButtonHandler(struct wl_listener *listener, void *data) {
-  // printf("-> buttonCursor\n");
+  // printf("-> cursorButtonHandler\n");
 
   // Variables
   struct coR_state *coRState =
@@ -166,7 +166,7 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
 }
 
 void cursorMotionHandler(struct wl_listener *listener, void *data) {
-  // printf("-> motionCursor\n");
+  // printf("-> cursorMotionHandler\n");
 
   // Variables
   struct coR_state *coRState =
@@ -209,9 +209,11 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
   }
 
   // -> le resize d'un toplevel avec click droit + SUPER
-  resizeTopLevel(resizingTopLevel, coRState, startResizingCursorPosX,
-                 startResizingCursorPosY, startResizingWidth,
-                 startResizingHeight, startResizingPosX, startResizingPosY);
+  if (resizingTopLevel != NULL) {
+    resizeTopLevel(resizingTopLevel, coRState, startResizingCursorPosX,
+                   startResizingCursorPosY, startResizingWidth,
+                   startResizingHeight, startResizingPosX, startResizingPosY);
+  }
 
   // -> le déplacement d'un toplevel avec click left + SUPER
   if (movingTopLevel != NULL) {
@@ -228,6 +230,7 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
 }
 
 void cursorMotionAbsoluteHandler(struct wl_listener *listener, void *data) {
+  // printf("-> cursorMotionAbsoluteHandler\n");
   // Variables
   struct coR_state *coRState =
       wl_container_of(listener, coRState, cursorMotionAbsoluteListener);
@@ -247,7 +250,7 @@ void cursorMotionAbsoluteHandler(struct wl_listener *listener, void *data) {
 }
 
 void cursorAxisHandler(struct wl_listener *listener, void *data) {
-  printf("-> axisCursor\n");
+  // printf("-> cursorAxisHandler\n");
 
   // Variables
   struct coR_state *coRState =
@@ -263,6 +266,7 @@ void cursorAxisHandler(struct wl_listener *listener, void *data) {
 
 struct wlr_surface *getSurfaceBelowCursor(struct coR_state *coRState,
                                           double *sX, double *sY) {
+  // printf("-> getSurfaceBelowCursor\n");
   // Variables
   double posX = coRState->cursor->x;
   double posY = coRState->cursor->y;

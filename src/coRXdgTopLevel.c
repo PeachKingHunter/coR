@@ -7,6 +7,7 @@
 #include <wayland-util.h>
 
 static void commitXdgTopLevelHandler(struct wl_listener *listener, void *data) {
+  // printf("-> commitXdgTopLevelHandler\n");
   // Variables
   struct coR_xdg_toplevel *coRXdgTopLevel =
       wl_container_of(listener, coRXdgTopLevel, commitListener);
@@ -50,7 +51,7 @@ static void commitXdgTopLevelHandler(struct wl_listener *listener, void *data) {
   struct wl_list *xdgTopLevelsList = &workspace->xdgTopLevels;
   if (!wl_list_empty(xdgTopLevelsList)) {
     struct coR_xdg_toplevel *xdgTopLevel =
-        wl_container_of(xdgTopLevelsList, xdgTopLevel, link);
+        wl_container_of(xdgTopLevelsList->next, xdgTopLevel, link);
     focusedSurface = xdgTopLevel->xdgTopLevel->base->surface;
     splitXdgTopLevel(xdgTopLevel, coRXdgTopLevel);
     wl_list_insert(&workspace->xdgTopLevels, &coRXdgTopLevel->link);
@@ -217,6 +218,7 @@ void newXdgTopLevelHandler(struct wl_listener *listener, void *data) {
 
 int setXdgTopLevelSize(struct coR_xdg_toplevel *xdgTopLevel, float newSizeX,
                        float newSizeY) {
+  printf("-> setXdgTopLevelSize\n");
   // Verif entry
   if (xdgTopLevel == NULL)
     return 0;
@@ -236,6 +238,7 @@ int setXdgTopLevelSize(struct coR_xdg_toplevel *xdgTopLevel, float newSizeX,
 
 int setXdgTopLevelPos(struct coR_xdg_toplevel *xdgTopLevel, float newPosX,
                       float newPosY) {
+  printf("-> setXdgTopLevelPos\n");
   // Verif entry
   if (xdgTopLevel == NULL)
     return 0;
@@ -253,7 +256,7 @@ int setXdgTopLevelPos(struct coR_xdg_toplevel *xdgTopLevel, float newPosX,
 
 int splitXdgTopLevel(struct coR_xdg_toplevel *toSplit,
                      struct coR_xdg_toplevel *newXdgTopLevel) {
-  printf("Enter split func\n");
+  printf("-> splitXdgTopLevel\n");
   if (toSplit == NULL || newXdgTopLevel == NULL)
     return 0;
 
@@ -263,40 +266,51 @@ int splitXdgTopLevel(struct coR_xdg_toplevel *toSplit,
   struct wlr_scene_tree *topLevelSceneTreeNew =
       newXdgTopLevel->xdgTopLevel->base->data;
 
+  if (topLevelSceneTreeToSplit == NULL || topLevelSceneTreeNew == NULL)
+    return 0;
+
   int width = toSplit->xdgTopLevel->current.width;
   int height = toSplit->xdgTopLevel->current.height;
+  printf("after variables\n");
 
   // Devient frère à celui découpé
   wlr_scene_node_reparent(&topLevelSceneTreeNew->node,
                           topLevelSceneTreeToSplit->node.parent);
+  printf("after reparent\n");
 
   // Minimal size
   if (width <= 2 && height <= 2) {
     printf("Too small\n");
     return 0;
   }
+  printf("after verif minimal size\n");
 
   if (width > height) {
+    printf("cond width > height entered\n");
 
     // Ajout à droite ou gauche
     // Position & size de la nouvelle surface
     setXdgTopLevelPos(newXdgTopLevel, toSplit->posX + width / 2.,
                       toSplit->posY);
     setXdgTopLevelSize(newXdgTopLevel, width / 2., height);
+    printf("width > height part 1 Ok\n");
 
     // Resize the parent surface
     setXdgTopLevelSize(toSplit, width / 2., height);
 
   } else {
+    printf("cond width < height entered\n");
     // Ajout en bas ou en haut
     // Position & size de la nouvelle surface
     setXdgTopLevelPos(newXdgTopLevel, toSplit->posX,
                       toSplit->posY + height / 2.);
     setXdgTopLevelSize(newXdgTopLevel, width, height / 2.);
+    printf("width < height part 1 Ok\n");
 
     // Resize the parent surface
     setXdgTopLevelSize(toSplit, width, height / 2.);
   }
+  printf("<- splitXdgTopLevel\n");
   return 1;
 }
 
@@ -311,6 +325,7 @@ void resizeTopLevel(struct coR_xdg_toplevel *resizingTopLevel,
                     struct coR_state *coRState, int startCursorPosX,
                     int startCursorPosY, int startSizeX, int startSizeY,
                     int startPosX, int startPosY) {
+  printf("-> resizeTopLevel\n");
   // Verif args
   if (resizingTopLevel == NULL || coRState == NULL)
     return;

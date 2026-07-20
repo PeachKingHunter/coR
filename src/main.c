@@ -28,7 +28,10 @@
 // Other protocoles
 #include <wlr/types/wlr_cursor_shape_v1.h> // for hyprpaper cursor_shape_manager
 #include <wlr/types/wlr_fractional_scale_v1.h>
+#include <wlr/types/wlr_linux_dmabuf_v1.h>
+#include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_viewporter.h>
+#include <wlr/types/wlr_data_device.h>
 
 // wlroot for initialization Pattern
 #include <wayland-server-core.h>
@@ -43,6 +46,8 @@
 #define CURSOR_SHAPE_MANAGER_V1_VERSION 2
 #define LAYER_SHELL_VERSION 5
 #define FRACTIONAL_SCALE_VERSION 1
+#define PRESENTATION_VERSION 2
+#define LINUX_DMABUF_VERSION 5
 
 int main() {
   // More logs
@@ -129,11 +134,13 @@ int main() {
     exit(1);
 
   //  5.2 XdgTopLevel & LayerSurface
-  struct wlr_xdg_shell *xdgShell = wlr_xdg_shell_create(display, WM_BASE_VERSION);
+  struct wlr_xdg_shell *xdgShell =
+      wlr_xdg_shell_create(display, WM_BASE_VERSION);
   if (xdgShell == NULL)
     exit(1);
 
-  struct wlr_layer_shell_v1 *layerShell = wlr_layer_shell_v1_create(display, LAYER_SHELL_VERSION);
+  struct wlr_layer_shell_v1 *layerShell =
+      wlr_layer_shell_v1_create(display, LAYER_SHELL_VERSION);
   if (layerShell == NULL)
     exit(1);
   // Layer shell TODO: focused surface -> diffrenciate with
@@ -187,8 +194,10 @@ int main() {
   wlr_cursor_shape_manager_v1_create(display, CURSOR_SHAPE_MANAGER_V1_VERSION);
   wlr_viewporter_create(display);
   wlr_fractional_scale_manager_v1_create(display, FRACTIONAL_SCALE_VERSION);
-  // wlr_data_device_manager_create(server.wl_display); // TO add late
-  // (clipboard)
+  wlr_presentation_create(display, backend, PRESENTATION_VERSION);
+  wlr_linux_dmabuf_v1_create_with_renderer(display, LINUX_DMABUF_VERSION,
+                                           coRState.renderer);
+  wlr_data_device_manager_create(coRState.display);
 
   // 8. Workspaces's structure initialisation
   coRState.focusedWorkspaceNum = 0;
@@ -223,8 +232,8 @@ int main() {
     execlp("quickshell", "quickshell", NULL);
   if (fork() == 0)
     execlp("wpaperd", "wpaperd", NULL);
-  // if (fork() == 0)
-  //   execlp("kitty", "kitty", NULL);
+  if (fork() == 0)
+    execlp("kitty", "kitty", NULL);
   wlr_log(WLR_INFO, "Running Wayland compositor on WAYLAND_DISPLAY=%s", socket);
 
   // 10. Launch the compositor
@@ -247,10 +256,15 @@ int main() {
   wlr_session_destroy(coRState.session);
   wlr_backend_destroy(backend);
   wl_display_destroy(display);
+  exit(1);
 }
 
 /* TODO: Erreur à réglé:
 - Peut pas décaler un surface sur un workspace vide
-- Peut pas enlever la derniere surface d'un workspace sinon boucle infini /
-crash
+- Ajouter une touche pour stopper des application
+- Réglér le probleme de focus du au différentes types de surface
+- Ajouter le fullscreen
+- Ajout du XWayland (Pour les appli X11 n'ayant pas de version wayland)
+- Ajouter la possibilité de changer la config avec un fichier texte
+- Être heureux (｡◕‿‿◕｡)
 */
