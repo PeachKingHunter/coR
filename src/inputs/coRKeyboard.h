@@ -9,6 +9,7 @@
 
 // Lib c
 #include <unistd.h>
+#include <signal.h>
 
 // Structure
 struct coR_keyboard_input {

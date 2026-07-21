@@ -91,6 +91,7 @@ void unmapLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   // Remove focuse if have it
   if (coRState->focusedSurface == layerSurface->surface) {
     coRState->focusedSurface = NULL;
+    coRState->focusedCoRXdgToplevel = NULL; // Useless line
     wlr_seat_keyboard_clear_focus(coRState->seat);
     wlr_seat_pointer_clear_focus(coRState->seat);
   }

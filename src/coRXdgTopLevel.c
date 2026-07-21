@@ -23,19 +23,21 @@ static void commitXdgTopLevelHandler(struct wl_listener *listener, void *data) {
 
   // Variables
   struct coR_state *coRState = coRXdgTopLevel->coRState;
-  struct wlr_surface *focusedSurface = coRXdgTopLevel->coRState->focusedSurface;
+  struct wlr_surface *focusedSurface = coRState->focusedSurface;
+  struct coR_xdg_toplevel *focusedXdgToplevel = coRState->focusedCoRXdgToplevel;
   struct coR_workspace *workspace =
       coRState->workspaces + coRState->focusedWorkspaceNum;
 
   printf("start P1\n");
   // Change the focus on it
-  coRXdgTopLevel->coRState->focusedSurface =
-      coRXdgTopLevel->xdgTopLevel->base->surface;
+  coRState->focusedSurface = coRXdgTopLevel->xdgTopLevel->base->surface;
+  coRState->focusedCoRXdgToplevel = coRXdgTopLevel;
+  
 
   printf("start P2\n");
   // If Focused surface is on the focused workspace (by cursor)
   // then split the focused surface in two
-  if (focusedSurface != NULL) {
+  if (focusedXdgToplevel != NULL) {
     struct coR_xdg_toplevel *focusedCoRXdgTopLevel = focusedSurface->data;
     if (focusedCoRXdgTopLevel->onWorkspaceNum ==
         coRState->focusedWorkspaceNum) {
@@ -85,6 +87,7 @@ static void unmapXdgTopLevelHandler(struct wl_listener *listener, void *data) {
 
   if (coRState->focusedSurface == coRXdgTopLevel->xdgTopLevel->base->surface) {
     coRState->focusedSurface = NULL;
+    coRState->focusedCoRXdgToplevel = NULL;
     wlr_seat_keyboard_clear_focus(coRState->seat);
     wlr_seat_pointer_clear_focus(coRState->seat);
   }
@@ -163,7 +166,7 @@ void newXdgTopLevelHandler(struct wl_listener *listener, void *data) {
     return;
   /*
     1.Structure de donnée
-    2.Stockage (liste)
+    2.Stockage (liste) -> Pas ici mais dans map
     3.Scene for position management
     4.Listeners
   */

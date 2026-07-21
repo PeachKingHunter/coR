@@ -1,8 +1,13 @@
 #include "coRKeyboard.h"
+#include <bits/types/cookie_io_functions_t.h>
+#include <signal.h>
 #include <stdio.h>
 #include <wayland-server-protocol.h>
+#include <wayland-util.h>
 
 extern int superPressed;
+
+#include <wlr/types/wlr_xdg_shell.h>
 
 // ---- ## Keyboard ## ---- //
 void keyKeyboardHandler(struct wl_listener *listener, void *data) {
@@ -15,12 +20,14 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
 
   // Raccourci spéciaux
   if (superPressed == true && event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-    if (event->keycode == 39) { // touche M -> Close compositor
+    // touche M -> Close compositor
+    if (event->keycode == 39) {
       exit(1);
       return;
     }
 
-    if (event->keycode == 30) { // touche Q -> Open Terminal
+    // touche Q -> Open Terminal
+    if (event->keycode == 30) {
       if (fork() == 0) {
         // execlp("weston-terminal", "weston-terminal", NULL);
         execlp("kitty", "kitty", NULL);
@@ -28,8 +35,17 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
       return;
     }
 
-    if ((event->keycode >= 2 && event->keycode <= 10) ||
-        event->keycode == 41) { // touche ², 1 à 4 -> Move Workspace 0 to 9
+    // touche C -> Close focused application
+    if (event->keycode == 46) {
+      if (coRState->focusedCoRXdgToplevel != NULL) {
+        wlr_xdg_toplevel_send_close(
+            coRState->focusedCoRXdgToplevel->xdgTopLevel);
+      }
+      return;
+    }
+
+    // touche ², 1 à 4 -> Move Workspace 0 to 9
+    if ((event->keycode >= 2 && event->keycode <= 10) || event->keycode == 41) {
       int otherWorkspaceNum = event->keycode - 1;
       if (otherWorkspaceNum > 9)
         otherWorkspaceNum = 0;
@@ -70,7 +86,7 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
   if (event->keycode == 125) // touche "super"
     superPressed = !superPressed;
 
-  // superPressed = true; // Temp for testing
+  superPressed = true; // Temp for testing
 
   // Vérifie si une surface à le focus
   if (!coRKeyboardI->coRState->focusedSurface) {

@@ -260,9 +260,6 @@ int main() {
 }
 
 /* TODO: Erreur à réglé:
-- Peut pas décaler un surface sur un workspace vide
-- Ajouter une touche pour stopper des application
-- Réglér le probleme de focus du au différentes types de surface
 - Ajouter le fullscreen
 - Ajout du XWayland (Pour les appli X11 n'ayant pas de version wayland)
 - Ajouter la possibilité de changer la config avec un fichier texte
