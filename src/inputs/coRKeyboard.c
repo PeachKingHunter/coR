@@ -44,6 +44,68 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
       return;
     }
 
+    // touche C -> Close focused application
+    if (event->keycode == 33) {
+      if (coRState->focusedCoRXdgToplevel != NULL) {
+        // Enable the fullscreen of an surface
+        if (!coRState->focusedCoRXdgToplevel->xdgTopLevel->current.fullscreen) {
+
+          resetMovingTopLevel(coRState);
+          resetResizingTopLevel();
+
+          // Variables
+          struct coR_xdg_toplevel *focusedTopLevel =
+              coRState->focusedCoRXdgToplevel;
+          struct coR_workspace *workspace =
+              coRState->workspaces + focusedTopLevel->onWorkspaceNum;
+          struct wlr_scene_tree *toplevelTree =
+              focusedTopLevel->xdgTopLevel->base->data;
+
+          // Set fullscreen (decoration) possibly temp
+          wlr_xdg_toplevel_set_fullscreen(focusedTopLevel->xdgTopLevel, true);
+
+          // Move & Resize the surface
+          setXdgTopLevelPosTemp(focusedTopLevel, 0, 0);
+          setXdgTopLevelSizeTemp(focusedTopLevel,
+                                 workspace->currentOutput->width,
+                                 workspace->currentOutput->height);
+
+          // Change the scene tree
+          wlr_scene_node_reparent(&toplevelTree->node, &coRState->scene->tree);
+          wlr_scene_node_place_below(&toplevelTree->node,
+                                     &coRState->cursorScene->node);
+          wlr_scene_node_set_enabled(&workspace->rootNode->node, false);
+
+          // Disable the fullscreen of an surface
+        } else {
+          // Variables
+          struct coR_xdg_toplevel *focusedTopLevel =
+              coRState->focusedCoRXdgToplevel;
+          struct coR_workspace *workspace =
+              coRState->workspaces + focusedTopLevel->onWorkspaceNum;
+          struct wlr_scene_tree *toplevelTree =
+              focusedTopLevel->xdgTopLevel->base->data;
+
+          // Set fullscreen (decoration) possibly temp
+          wlr_xdg_toplevel_set_fullscreen(focusedTopLevel->xdgTopLevel, false);
+
+          // Move & Resize the surface
+          setXdgTopLevelSizeTemp(focusedTopLevel, focusedTopLevel->sizeX,
+                                 focusedTopLevel->sizeY);
+          setXdgTopLevelPosTemp(focusedTopLevel, focusedTopLevel->posX,
+                                focusedTopLevel->posY);
+
+          // Change the scene tree
+          wlr_scene_node_reparent(&toplevelTree->node, workspace->rootNode);
+          wlr_scene_node_set_enabled(&workspace->rootNode->node, true);
+
+          wlr_xdg_toplevel_set_fullscreen(
+              coRState->focusedCoRXdgToplevel->xdgTopLevel, false);
+        }
+      }
+      return;
+    }
+
     // touche ², 1 à 4 -> Move Workspace 0 to 9
     if ((event->keycode >= 2 && event->keycode <= 10) || event->keycode == 41) {
       int otherWorkspaceNum = event->keycode - 1;
@@ -86,7 +148,7 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
   if (event->keycode == 125) // touche "super"
     superPressed = !superPressed;
 
-  superPressed = true; // Temp for testing
+  // superPressed = true; // Temp for testing
 
   // Vérifie si une surface à le focus
   if (!coRKeyboardI->coRState->focusedSurface) {

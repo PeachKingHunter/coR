@@ -159,7 +159,7 @@ int main() {
   //    5.3.1 Cursor Rect in scene for render cursor (temp I think)
   float color[4] = {1, 0, 0, 1};
   coRState.cursorScene =
-      wlr_scene_rect_create(&coRState.scene->tree, 10, 10, color);
+      wlr_scene_rect_create(&coRState.scene->tree, 5, 5, color);
 
   // 6. Listeners
   coRState.newOutputListener.notify = newOutputHandler;
@@ -260,7 +260,6 @@ int main() {
 }
 
 /* TODO: Erreur à réglé:
-- Ajouter le fullscreen
 - Ajout du XWayland (Pour les appli X11 n'ayant pas de version wayland)
 - Ajouter la possibilité de changer la config avec un fichier texte
 - Être heureux (｡◕‿‿◕｡)

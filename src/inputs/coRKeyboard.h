@@ -6,6 +6,7 @@
 
 // My Lib
 #include "../coRState.h"
+#include "coRCursor.h"
 
 // Lib c
 #include <unistd.h>

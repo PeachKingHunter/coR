@@ -32,4 +32,9 @@ void cursorAxisHandler(struct wl_listener *listener, void *data);
 struct wlr_surface *getSurfaceBelowCursor(struct coR_state *coRState,
                                           double *sX, double *sY);
 
+// Just reset the movingTopLevel and replace it at it's place
+void resetMovingTopLevel(struct coR_state *coRState);
+// Desable the resize
+void resetResizingTopLevel();
+
 #endif

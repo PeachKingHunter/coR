@@ -32,10 +32,18 @@ struct coR_xdg_toplevel {
 void newXdgTopLevelHandler(struct wl_listener *listener, void *data);
 
 /*
-  Just change the size of an xdgTopLevel with a coR_xdg_toplevel
+  Just change the size/position of an xdgTopLevel with a coR_xdg_toplevel
 */
 int setXdgTopLevelSize(struct coR_xdg_toplevel *xdgTopLevel, float newSizeX, float newSizeY);
 int setXdgTopLevelPos(struct coR_xdg_toplevel *xdgTopLevel, float newPosX, float newPosY);
+
+/*
+  Just change the size/position of an xdgTopLevel with a coR_xdg_toplevel
+  But not permanently (don't change the value in the coR_xdg_toplevel structure)
+*/
+int setXdgTopLevelSizeTemp(struct coR_xdg_toplevel *xdgTopLevel, float newSizeX, float newSizeY);
+int setXdgTopLevelPosTemp(struct coR_xdg_toplevel *xdgTopLevel, float newPosX, float newPosY);
+
 
 int splitXdgTopLevel(struct coR_xdg_toplevel *toSplit,
                      struct coR_xdg_toplevel *newXdgTopLevel);

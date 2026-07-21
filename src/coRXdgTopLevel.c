@@ -32,7 +32,6 @@ static void commitXdgTopLevelHandler(struct wl_listener *listener, void *data) {
   // Change the focus on it
   coRState->focusedSurface = coRXdgTopLevel->xdgTopLevel->base->surface;
   coRState->focusedCoRXdgToplevel = coRXdgTopLevel;
-  
 
   printf("start P2\n");
   // If Focused surface is on the focused workspace (by cursor)
@@ -232,7 +231,7 @@ int setXdgTopLevelSize(struct coR_xdg_toplevel *xdgTopLevel, float newSizeX,
   if (newSizeY <= xdgTopLevel->xdgTopLevel->current.min_height)
     return 0;
 
-  // Change position
+  // Change size 
   xdgTopLevel->sizeX = newSizeX;
   xdgTopLevel->sizeY = newSizeY;
   return wlr_xdg_toplevel_set_size(xdgTopLevel->xdgTopLevel, xdgTopLevel->sizeX,
@@ -256,6 +255,42 @@ int setXdgTopLevelPos(struct coR_xdg_toplevel *xdgTopLevel, float newPosX,
                               xdgTopLevel->posY);
   return 1;
 }
+
+
+int setXdgTopLevelSizeTemp(struct coR_xdg_toplevel *xdgTopLevel, float newSizeX,
+                       float newSizeY) {
+  printf("-> setXdgTopLevelSize\n");
+  // Verif entry
+  if (xdgTopLevel == NULL)
+    return 0;
+
+  if (newSizeX <= xdgTopLevel->xdgTopLevel->current.min_width)
+    return 0;
+
+  if (newSizeY <= xdgTopLevel->xdgTopLevel->current.min_height)
+    return 0;
+
+  // Change size (Not permanently in the data structure)
+  return wlr_xdg_toplevel_set_size(xdgTopLevel->xdgTopLevel, newSizeX,
+                                   newSizeY);
+}
+
+int setXdgTopLevelPosTemp(struct coR_xdg_toplevel *xdgTopLevel, float newPosX,
+                      float newPosY) {
+  printf("-> setXdgTopLevelPos\n");
+  // Verif entry
+  if (xdgTopLevel == NULL)
+    return 0;
+
+  // Change position (Not permanently in the data structure)
+  struct wlr_scene_tree *topLevelSceneTree =
+      xdgTopLevel->xdgTopLevel->base->data;
+  wlr_scene_node_set_position(&topLevelSceneTree->node, newPosX,
+                              newPosY);
+  return 1;
+}
+
+
 
 int splitXdgTopLevel(struct coR_xdg_toplevel *toSplit,
                      struct coR_xdg_toplevel *newXdgTopLevel) {

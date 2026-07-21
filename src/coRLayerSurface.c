@@ -15,7 +15,7 @@ void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   struct coR_layer_surface *coRLayerSurface =
       wl_container_of(listener, coRLayerSurface, commitListener);
   struct wlr_layer_surface_v1 *layerSurface = coRLayerSurface->layerSurface;
-  // struct coR_state *coRState = coRLayerSurface->coRState;
+  struct coR_state *coRState = coRLayerSurface->coRState;
   struct coR_output *wantedCoROutput = layerSurface->output->data;
 
   if (!layerSurface->initialized || layerSurface->configured)
@@ -59,12 +59,14 @@ void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
                                 .height = layerSurface->output->height};
   wlr_scene_layer_surface_v1_configure(coRLayerSurface->sceneLayerSurface,
                                        &full_area, &usable_area);
+
+  // Hierarchi selon le layer de la surface
   if (layerSurface->current.layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
     wlr_scene_node_lower_to_bottom(
         &coRLayerSurface->sceneLayerSurface->tree->node);
   } else {
-    wlr_scene_node_raise_to_top(
-        &coRLayerSurface->sceneLayerSurface->tree->node);
+    wlr_scene_node_place_below(&coRLayerSurface->sceneLayerSurface->tree->node,
+                               &coRState->cursorScene->node);
   }
 }
 

@@ -2,8 +2,6 @@
 #include "../coRXdgTopLevel.h"
 #include "coRInputs.h"
 #include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <wayland-util.h>
 #include <wlr/types/wlr_cursor.h>
@@ -34,17 +32,19 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
   if (event->button == 273) {
     if (event->state == WL_POINTER_BUTTON_STATE_PRESSED && superPressed &&
         coRState->focusedCoRXdgToplevel) {
-      resizingTopLevel = coRState->focusedCoRXdgToplevel;
-      startResizingCursorPosX = coRState->cursor->x;
-      startResizingCursorPosY = coRState->cursor->y;
-      startResizingPosX = resizingTopLevel->posX;
-      startResizingPosY = resizingTopLevel->posY;
-      startResizingWidth = resizingTopLevel->xdgTopLevel->current.width;
-      startResizingHeight = resizingTopLevel->xdgTopLevel->current.height;
+      if (!coRState->focusedCoRXdgToplevel->xdgTopLevel->current.fullscreen) {
+        resizingTopLevel = coRState->focusedCoRXdgToplevel;
+        startResizingCursorPosX = coRState->cursor->x;
+        startResizingCursorPosY = coRState->cursor->y;
+        startResizingPosX = resizingTopLevel->posX;
+        startResizingPosY = resizingTopLevel->posY;
+        startResizingWidth = resizingTopLevel->xdgTopLevel->current.width;
+        startResizingHeight = resizingTopLevel->xdgTopLevel->current.height;
 
-      lastDeltaX = 0;
-      lastDeltaY = 0;
-
+        lastDeltaX = 0;
+        lastDeltaY = 0;
+        return;
+      }
     } else if (event->state == WL_POINTER_BUTTON_STATE_RELEASED &&
                resizingTopLevel != NULL) {
       resizingTopLevel = NULL;
@@ -55,10 +55,12 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
   else if (event->button == 272) {
     if (event->state == WL_POINTER_BUTTON_STATE_PRESSED && superPressed &&
         coRState->focusedCoRXdgToplevel) {
-      movingTopLevel = coRState->focusedCoRXdgToplevel;
-      startMovingPosX = coRState->cursor->x;
-      startMovingPosY = coRState->cursor->y;
-      return;
+      if (!coRState->focusedCoRXdgToplevel->xdgTopLevel->current.fullscreen) {
+        movingTopLevel = coRState->focusedCoRXdgToplevel;
+        startMovingPosX = coRState->cursor->x;
+        startMovingPosY = coRState->cursor->y;
+        return;
+      }
 
     } else if (event->state == WL_POINTER_BUTTON_STATE_RELEASED &&
                movingTopLevel != NULL) {
@@ -67,12 +69,6 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
       int startPosY = movingTopLevel->posY;
       int startSizeX = movingTopLevel->sizeX;
       int startSizeY = movingTopLevel->sizeY;
-
-      // Change toplevel posX & posY
-      int deltaX = coRState->cursor->x - startMovingPosX;
-      int deltaY = coRState->cursor->y - startMovingPosY;
-      movingTopLevel->posX += deltaX;
-      movingTopLevel->posY += deltaY;
 
       struct coR_workspace *workspace =
           coRState->workspaces + coRState->focusedWorkspaceNum;
@@ -186,10 +182,6 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
       else if (movingTopLevel != NULL) {
         struct wlr_scene_tree *sceneTree =
             movingTopLevel->xdgTopLevel->base->data;
-        int deltaX = coRState->cursor->x - startMovingPosX;
-        int deltaY = coRState->cursor->y - startMovingPosY;
-        movingTopLevel->posX -= deltaX;
-        movingTopLevel->posY -= deltaY;
         wlr_scene_node_set_position(&sceneTree->node, movingTopLevel->posX,
                                     movingTopLevel->posY);
         movingTopLevel = NULL;
@@ -328,4 +320,24 @@ struct wlr_surface *getSurfaceBelowCursor(struct coR_state *coRState,
     return NULL;
 
   return scene_surface->surface;
+}
+
+// Just reset the movingTopLevel and replace it at it's place
+void resetMovingTopLevel(struct coR_state *coRState) {
+  if (coRState == NULL)
+    return;
+
+  // On la remet à sa position initial
+  if (movingTopLevel != NULL) {
+    struct wlr_scene_tree *sceneTree = movingTopLevel->xdgTopLevel->base->data;
+    wlr_scene_node_set_position(&sceneTree->node, movingTopLevel->posX,
+                                movingTopLevel->posY);
+    movingTopLevel = NULL;
+  }
+}
+
+// Desable the resize
+void resetResizingTopLevel() {
+  if (resizingTopLevel != NULL)
+    resizingTopLevel = NULL;
 }
