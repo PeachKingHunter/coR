@@ -9,14 +9,25 @@
 #include <wlr-layer-shell-unstable-v1-protocol.h>
 
 void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
-  printf("-> commitLayerSurfaceHandler\n");
+  // printf("-> commitLayerSurfaceHandler\n");
 
   // Variables
   struct coR_layer_surface *coRLayerSurface =
       wl_container_of(listener, coRLayerSurface, commitListener);
   struct wlr_layer_surface_v1 *layerSurface = coRLayerSurface->layerSurface;
   struct coR_state *coRState = coRLayerSurface->coRState;
-  struct coR_output *wantedCoROutput = layerSurface->output->data;
+
+  // Recup un écran sinon ne fait rien et attends un prochaine fois
+  struct coR_output *wantedCoROutput = NULL;
+  if (layerSurface->output != NULL) {
+    wantedCoROutput = layerSurface->output->data;
+  } else {
+    if (coRState->focusedOutput) {
+      wantedCoROutput = coRState->focusedOutput->data;
+    } else {
+      return;
+    }
+  }
 
   if (!layerSurface->initialized || layerSurface->configured)
     return;
@@ -26,11 +37,11 @@ void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   // Get size wanted
   int sizeX = layerSurface->current.desired_width;
   if (sizeX == 0)
-    sizeX = layerSurface->output->width;
+    sizeX = wantedCoROutput->output->width;
 
   int sizeY = layerSurface->current.desired_height;
   if (sizeY == 0)
-    sizeY = layerSurface->output->height;
+    sizeY = wantedCoROutput->output->height;
 
   // TODO:Get pos from anchor
   int posX = 0;
@@ -51,12 +62,12 @@ void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   // Get the workspace wanted by itself
   struct wlr_box full_area = {.x = posX,
                               .y = posY,
-                              .width = layerSurface->output->width,
-                              .height = layerSurface->output->height};
+                              .width = wantedCoROutput->output->width,
+                              .height = wantedCoROutput->output->height};
   struct wlr_box usable_area = {.x = posX,
                                 .y = posY,
-                                .width = layerSurface->output->width,
-                                .height = layerSurface->output->height};
+                                .width = wantedCoROutput->output->width,
+                                .height = wantedCoROutput->output->height};
   wlr_scene_layer_surface_v1_configure(coRLayerSurface->sceneLayerSurface,
                                        &full_area, &usable_area);
 

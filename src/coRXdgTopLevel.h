@@ -6,8 +6,11 @@
 #include <wayland-util.h>
 #include <wlr/types/wlr_xdg_shell.h>
 
+#define TYPE_XDG_TOPLEVEL 0
+
 // Struture
 struct coR_xdg_toplevel {
+  char type;
   struct wlr_xdg_toplevel *xdgTopLevel;
   struct coR_state *coRState;
 

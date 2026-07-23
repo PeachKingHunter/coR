@@ -2,6 +2,7 @@
 #include "coRLayerSurface.h"
 #include "coROutput.h"
 #include "coRState.h"
+#include "coRXSurface.h"
 #include "coRXdgTopLevel.h"
 
 #include "inputs/coRInputs.h"
@@ -22,16 +23,19 @@
 #include <wlr/types/wlr_shm.h>
 #include <wlr/types/wlr_subcompositor.h>
 
+// XWayland
+#include <wlr/xwayland.h>
+
 // Layer shell
 #include <wlr/types/wlr_layer_shell_v1.h>
 
 // Other protocoles
 #include <wlr/types/wlr_cursor_shape_v1.h> // for hyprpaper cursor_shape_manager
+#include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_viewporter.h>
-#include <wlr/types/wlr_data_device.h>
 
 // wlroot for initialization Pattern
 #include <wayland-server-core.h>
@@ -161,6 +165,13 @@ int main() {
   coRState.cursorScene =
       wlr_scene_rect_create(&coRState.scene->tree, 5, 5, color);
 
+  // XWayland
+  struct wlr_xwayland *xwayland =
+      wlr_xwayland_create(display, compositor, false);
+  setenv("DISPLAY", xwayland->display_name, 1);
+
+  wlr_xwayland_set_seat(xwayland, coRState.seat);
+
   // 6. Listeners
   coRState.newOutputListener.notify = newOutputHandler;
   wl_signal_add(&backend->events.new_output, &coRState.newOutputListener);
@@ -189,6 +200,13 @@ int main() {
   coRState.newLayerSurfaceListener.notify = newLayerSurfaceHandler;
   wl_signal_add(&layerShell->events.new_surface,
                 &coRState.newLayerSurfaceListener);
+
+  coRState.xwaylandReadyListener.notify = xwaylandReadyHandler;
+  wl_signal_add(&xwayland->events.ready, &coRState.xwaylandReadyListener);
+
+  coRState.xwaylandNewSurfaceListener.notify = xwaylandNewSurfaceHandler;
+  wl_signal_add(&xwayland->events.new_surface,
+                &coRState.xwaylandNewSurfaceListener);
 
   // 7. Other protocols
   wlr_cursor_shape_manager_v1_create(display, CURSOR_SHAPE_MANAGER_V1_VERSION);
@@ -248,6 +266,7 @@ int main() {
   wl_list_remove(&coRState.cursorMotionAbsoluteListener.link);
   wl_list_remove(&coRState.newLayerSurfaceListener.link);
 
+  wlr_xwayland_destroy(xwayland);
   wlr_scene_node_destroy(&coRState.scene->tree.node);
   wlr_allocator_destroy(coRState.allocator);
   wlr_renderer_destroy(coRState.renderer);
@@ -260,7 +279,7 @@ int main() {
 }
 
 /* TODO: Erreur à réglé:
-- Ajout du XWayland (Pour les appli X11 n'ayant pas de version wayland)
+- Finir le XWayland pour placer les application comme les application wayland
 - Ajouter la possibilité de changer la config avec un fichier texte
 - Être heureux (｡◕‿‿◕｡)
 */

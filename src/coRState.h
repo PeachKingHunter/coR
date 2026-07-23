@@ -67,6 +67,9 @@ struct coR_state {
   struct wl_listener cursorMotionListener;
   struct wl_listener cursorMotionAbsoluteListener;
   struct wl_listener cursorAxisListener;
+
+  struct wl_listener xwaylandReadyListener;
+  struct wl_listener xwaylandNewSurfaceListener;
 };
 
 #endif

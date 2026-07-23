@@ -15,5 +15,6 @@ executable(
     'src/inputs/coRKeyboard.c',
     'src/inputs/coRCursor.c',
     'src/coRLayerSurface.c',
+    'src/coRXSurface.c',
     dependencies: [wayland_server, wlroots, xkbcommon]
 )

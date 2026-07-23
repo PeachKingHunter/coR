@@ -186,6 +186,7 @@ void newXdgTopLevelHandler(struct wl_listener *listener, void *data) {
   coRXdgTopLevel->coRState = coRState;
   coRXdgTopLevel->posX = 0;
   coRXdgTopLevel->posY = 0;
+  coRXdgTopLevel->type = TYPE_XDG_TOPLEVEL;
 
   // 2.
   // wl_list_insert(&coRState->xdgTopLevels, &coRXdgTopLevel->link);
