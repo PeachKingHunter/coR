@@ -5,6 +5,9 @@
 #include "wlr/backend/libinput.h"
 
 // My Lib
+#include "../surfaces/surfaceAbstraction.h"
+#include "../surfaces/coRXdgTopLevel.h"
+#include "../surfaces/coRXSurface.h"
 #include "../coRState.h"
 #include "coRCursor.h"
 

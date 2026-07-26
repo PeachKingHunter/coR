@@ -1,5 +1,5 @@
 #include "./coRCursor.h"
-#include "../coRXdgTopLevel.h"
+#include "../surfaces/coRXdgTopLevel.h"
 #include "coRInputs.h"
 #include <stddef.h>
 #include <unistd.h>
@@ -31,9 +31,10 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
   // -> Active/Désactive -> le resize d'un toplevel avec click droit + SUPER
   if (event->button == 273) {
     if (event->state == WL_POINTER_BUTTON_STATE_PRESSED && superPressed &&
-        coRState->focusedCoRXdgToplevel) {
-      if (!coRState->focusedCoRXdgToplevel->xdgTopLevel->current.fullscreen) {
-        resizingTopLevel = coRState->focusedCoRXdgToplevel;
+        coRState->focusedCoRSurface) {
+      if (!((struct coR_xdg_toplevel *)coRState->focusedCoRSurface)
+               ->xdgTopLevel->current.fullscreen) {
+        resizingTopLevel = coRState->focusedCoRSurface;
         startResizingCursorPosX = coRState->cursor->x;
         startResizingCursorPosY = coRState->cursor->y;
         startResizingPosX = resizingTopLevel->posX;
@@ -54,9 +55,10 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
   // -> Active/Désactive -> le déplacement d'un toplevel avec click left + SUPER
   else if (event->button == 272) {
     if (event->state == WL_POINTER_BUTTON_STATE_PRESSED && superPressed &&
-        coRState->focusedCoRXdgToplevel) {
-      if (!coRState->focusedCoRXdgToplevel->xdgTopLevel->current.fullscreen) {
-        movingTopLevel = coRState->focusedCoRXdgToplevel;
+        coRState->focusedCoRSurface) {
+      if (!((struct coR_xdg_toplevel *)coRState->focusedCoRSurface)
+               ->xdgTopLevel->current.fullscreen) {
+        movingTopLevel = coRState->focusedCoRSurface;
         startMovingPosX = coRState->cursor->x;
         startMovingPosY = coRState->cursor->y;
         return;

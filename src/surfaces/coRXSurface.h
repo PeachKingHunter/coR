@@ -1,6 +1,22 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <wayland-server-core.h>
+#include "../src/coRState.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <wayland-server-core.h>
+#include <wayland-util.h>
+#include <wlr/xwayland.h>
+#include <wlr/backend.h>
+
+#include "../coRState.h"
+#include "../inputs/coRCursor.h"
+#include "../inputs/coRInputs.h"
+#include <stddef.h>
+#include <stdio.h>
+#include <wayland-util.h>
 
 #define TYPE_XSURFACE 1
 

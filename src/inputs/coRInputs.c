@@ -116,9 +116,9 @@ void inputsChangeSurfaceToFocus(struct coR_state *coRState,
   // Change focus in case of XdgTopLevel
   if (surface->data != NULL) {
     printf("xdgTopLevelDetected To Focus\n");
-    coRState->focusedCoRXdgToplevel = surface->data;
+    coRState->focusedCoRSurface = surface->data;
   } else {
-    coRState->focusedCoRXdgToplevel = NULL;
+    coRState->focusedCoRSurface = NULL;
   }
 
   coRState->focusedSurface = surface;

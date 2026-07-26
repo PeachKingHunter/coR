@@ -1,5 +1,5 @@
 #include "coRKeyboard.h"
-#include <bits/types/cookie_io_functions_t.h>
+#include "src/surfaces/coRXdgTopLevel.h"
 #include <signal.h>
 #include <stdio.h>
 #include <wayland-server-protocol.h>
@@ -37,25 +37,27 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
 
     // touche C -> Close focused application
     if (event->keycode == 46) {
-      if (coRState->focusedCoRXdgToplevel != NULL) {
+      if (coRState->focusedCoRSurface != NULL) {
         wlr_xdg_toplevel_send_close(
-            coRState->focusedCoRXdgToplevel->xdgTopLevel);
+            ((struct coR_xdg_toplevel *)coRState->focusedCoRSurface)
+                ->xdgTopLevel);
       }
       return;
     }
 
     // touche C -> Close focused application
     if (event->keycode == 33) {
-      if (coRState->focusedCoRXdgToplevel != NULL) {
+      if (coRState->focusedCoRSurface != NULL) {
         // Enable the fullscreen of an surface
-        if (!coRState->focusedCoRXdgToplevel->xdgTopLevel->current.fullscreen) {
+        if (!((struct coR_xdg_toplevel *)coRState->focusedCoRSurface)
+                 ->xdgTopLevel->current.fullscreen) {
 
           resetMovingTopLevel(coRState);
           resetResizingTopLevel();
 
           // Variables
           struct coR_xdg_toplevel *focusedTopLevel =
-              coRState->focusedCoRXdgToplevel;
+              coRState->focusedCoRSurface;
           struct coR_workspace *workspace =
               coRState->workspaces + focusedTopLevel->onWorkspaceNum;
           struct wlr_scene_tree *toplevelTree =
@@ -80,7 +82,7 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
         } else {
           // Variables
           struct coR_xdg_toplevel *focusedTopLevel =
-              coRState->focusedCoRXdgToplevel;
+              coRState->focusedCoRSurface;
           struct coR_workspace *workspace =
               coRState->workspaces + focusedTopLevel->onWorkspaceNum;
           struct wlr_scene_tree *toplevelTree =
@@ -100,7 +102,9 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
           wlr_scene_node_set_enabled(&workspace->rootNode->node, true);
 
           wlr_xdg_toplevel_set_fullscreen(
-              coRState->focusedCoRXdgToplevel->xdgTopLevel, false);
+              ((struct coR_xdg_toplevel *)coRState->focusedCoRSurface)
+                  ->xdgTopLevel,
+              false);
         }
       }
       return;

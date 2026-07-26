@@ -1,12 +1,5 @@
 #include "coRLayerSurface.h"
-#include "coROutput.h"
-#include "coRState.h"
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <wayland-server-core.h>
-#include <wayland-util.h>
-#include <wlr-layer-shell-unstable-v1-protocol.h>
+
 
 void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   // printf("-> commitLayerSurfaceHandler\n");
@@ -104,7 +97,7 @@ void unmapLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   // Remove focuse if have it
   if (coRState->focusedSurface == layerSurface->surface) {
     coRState->focusedSurface = NULL;
-    coRState->focusedCoRXdgToplevel = NULL; // Useless line
+    coRState->focusedCoRSurface = NULL; // Useless line
     wlr_seat_keyboard_clear_focus(coRState->seat);
     wlr_seat_pointer_clear_focus(coRState->seat);
   }

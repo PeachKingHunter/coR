@@ -1,7 +1,7 @@
 #include "coRXdgTopLevel.h"
-#include "coRState.h"
-#include "inputs/coRCursor.h"
-#include "inputs/coRInputs.h"
+#include "../coRState.h"
+#include "../inputs/coRCursor.h"
+#include "../inputs/coRInputs.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <wayland-util.h>
@@ -24,14 +24,14 @@ static void commitXdgTopLevelHandler(struct wl_listener *listener, void *data) {
   // Variables
   struct coR_state *coRState = coRXdgTopLevel->coRState;
   struct wlr_surface *focusedSurface = coRState->focusedSurface;
-  struct coR_xdg_toplevel *focusedXdgToplevel = coRState->focusedCoRXdgToplevel;
+  struct coR_xdg_toplevel *focusedXdgToplevel = coRState->focusedCoRSurface;
   struct coR_workspace *workspace =
       coRState->workspaces + coRState->focusedWorkspaceNum;
 
   printf("start P1\n");
   // Change the focus on it
   coRState->focusedSurface = coRXdgTopLevel->xdgTopLevel->base->surface;
-  coRState->focusedCoRXdgToplevel = coRXdgTopLevel;
+  coRState->focusedCoRSurface = coRXdgTopLevel;
 
   printf("start P2\n");
   // If Focused surface is on the focused workspace (by cursor)
@@ -86,7 +86,7 @@ static void unmapXdgTopLevelHandler(struct wl_listener *listener, void *data) {
 
   if (coRState->focusedSurface == coRXdgTopLevel->xdgTopLevel->base->surface) {
     coRState->focusedSurface = NULL;
-    coRState->focusedCoRXdgToplevel = NULL;
+    coRState->focusedCoRSurface = NULL;
     wlr_seat_keyboard_clear_focus(coRState->seat);
     wlr_seat_pointer_clear_focus(coRState->seat);
   }

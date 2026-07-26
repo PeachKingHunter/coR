@@ -1,5 +1,4 @@
 #include "coROutput.h"
-#include "coRState.h"
 
 void outputFrameHandler(struct wl_listener *listener, void *data) {
   // printf("-> Render frame of an output\n");

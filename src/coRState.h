@@ -2,7 +2,7 @@
 #define CoRState_H
 
 // wlroot for initialization Pattern
-#include "coRXdgTopLevel.h"
+// #include "surfaces/coRXdgTopLevel.h"
 #include "wlr/types/wlr_seat.h"
 #include <wayland-server-core.h>
 
@@ -39,9 +39,7 @@ struct coR_state {
 
   // Focus
   struct wlr_surface *focusedSurface;
-  struct coR_xdg_toplevel *focusedCoRXdgToplevel;
-  // TODO: separate focusedTopLevel &
-  // focusedSurface due to subsurfaces & layerSurface
+  void *focusedCoRSurface;
   struct wlr_output *focusedOutput;
   int focusedWorkspaceNum;
 

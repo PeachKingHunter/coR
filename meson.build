@@ -10,11 +10,12 @@ executable(
     'src/main.c',
     'src/coRState.c',
     'src/coROutput.c',
-    'src/coRXdgTopLevel.c',
     'src/inputs/coRInputs.c',
     'src/inputs/coRKeyboard.c',
     'src/inputs/coRCursor.c',
-    'src/coRLayerSurface.c',
-    'src/coRXSurface.c',
+    'src/surfaces/coRXdgTopLevel.c',
+    'src/surfaces/coRLayerSurface.c',
+    'src/surfaces/coRXSurface.c',
+    'src/surfaces/surfaceAbstraction.c',
     dependencies: [wayland_server, wlroots, xkbcommon]
 )

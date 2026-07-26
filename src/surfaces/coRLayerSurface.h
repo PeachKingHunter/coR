@@ -1,8 +1,16 @@
 #ifndef CoRSurface_H
 #define CoRSurface_H
 
+#include "../coROutput.h"
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <wayland-server-core.h>
+#include <wayland-util.h>
+#include <wlr-layer-shell-unstable-v1-protocol.h>
+
 // Wlroots
-#include "coRState.h"
+#include "../coRState.h"
 #include <wayland-server-core.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
 
@@ -14,6 +22,10 @@
 
 // Structure
 struct coR_layer_surface {
+  // Should not be move (same place for each surface type struct
+  // char type;
+  // struct wl_list link;
+
   // Main component
   struct wlr_layer_surface_v1 *layerSurface;
   struct coR_state *coRState;

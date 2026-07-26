@@ -1,9 +1,9 @@
 // My lib
-#include "coRLayerSurface.h"
+#include "surfaces/coRLayerSurface.h"
 #include "coROutput.h"
 #include "coRState.h"
-#include "coRXSurface.h"
-#include "coRXdgTopLevel.h"
+#include "surfaces/coRXdgTopLevel.h"
+#include "surfaces/coRXSurface.h"
 
 #include "inputs/coRInputs.h"
 
@@ -280,6 +280,7 @@ int main() {
 
 /* TODO: Erreur à réglé:
 - Finir le XWayland pour placer les application comme les application wayland
+- Fullscreen on good monitor (should take workspace posX)
 - Ajouter la possibilité de changer la config avec un fichier texte
 - Être heureux (｡◕‿‿◕｡)
 */

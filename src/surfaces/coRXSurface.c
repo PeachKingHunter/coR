@@ -1,10 +1,5 @@
 #include "coRXSurface.h"
-#include "src/coRState.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <wayland-server-core.h>
-#include <wayland-util.h>
-#include <wlr/xwayland.h>
+
 
 void xwaylandCommitHandler(struct wl_listener *listener, void *data) {
   // printf("-> xwaylandCommitHandler\n");
