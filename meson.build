@@ -16,6 +16,6 @@ executable(
     'src/surfaces/coRXdgTopLevel.c',
     'src/surfaces/coRLayerSurface.c',
     'src/surfaces/coRXSurface.c',
-    'src/surfaces/surfaceAbstraction.c',
+    'src/surfaces/coRSurface.c',
     dependencies: [wayland_server, wlroots, xkbcommon]
 )

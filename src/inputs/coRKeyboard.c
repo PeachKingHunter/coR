@@ -1,6 +1,5 @@
 #include "coRKeyboard.h"
-#include "src/surfaces/coRXdgTopLevel.h"
-#include <signal.h>
+#include "src/surfaces/coRSurface.h"
 #include <stdio.h>
 #include <wayland-server-protocol.h>
 #include <wayland-util.h>
@@ -20,91 +19,92 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
 
   // Raccourci spéciaux
   if (superPressed == true && event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-    // touche M -> Close compositor
-    if (event->keycode == 39) {
-      exit(1);
-      return;
-    }
-
-    // touche Q -> Open Terminal
-    if (event->keycode == 30) {
-      if (fork() == 0) {
-        // execlp("weston-terminal", "weston-terminal", NULL);
-        execlp("kitty", "kitty", NULL);
+    if (surfaceIsFullScreen(coRState->focusedCoRSurface) != 1) {
+      // touche M -> Close compositor
+      if (event->keycode == 39) {
+        exit(1);
+        return;
       }
-      return;
-    }
 
-    // touche C -> Close focused application
-    if (event->keycode == 46) {
-      if (coRState->focusedCoRSurface != NULL) {
-        wlr_xdg_toplevel_send_close(
-            ((struct coR_xdg_toplevel *)coRState->focusedCoRSurface)
-                ->xdgTopLevel);
+      // touche Q -> Open Terminal
+      if (event->keycode == 30) {
+        if (fork() == 0) {
+          // execlp("weston-terminal", "weston-terminal", NULL);
+          execlp("kitty", "kitty", NULL);
+        }
+        return;
       }
-      return;
+
+      // touche R -> Open rofi
+      if (event->keycode == 19) {
+        if (fork() == 0) {
+          // execlp("weston-terminal", "weston-terminal", NULL);
+          execlp("rofi", "rofi", "-show", "drun", "-disable-history",
+                 "-show-icons", "-config",
+                 "~/.config/rofi/app-launcher.rasi", NULL);
+        }
+        return;
+      }
+
+      // touche C -> Close focused application
+      if (event->keycode == 46) {
+        if (coRState->focusedCoRSurface != NULL) {
+          wlr_xdg_toplevel_send_close(
+              ((struct coR_surface *)coRState->focusedCoRSurface)->surfaceAbs);
+        }
+        return;
+      }
     }
 
-    // touche C -> Close focused application
+    // touche f -> Fullscreen
     if (event->keycode == 33) {
       if (coRState->focusedCoRSurface != NULL) {
         // Enable the fullscreen of an surface
-        if (!((struct coR_xdg_toplevel *)coRState->focusedCoRSurface)
-                 ->xdgTopLevel->current.fullscreen) {
+        if (surfaceIsFullScreen(coRState->focusedCoRSurface) == 0) {
 
           resetMovingTopLevel(coRState);
           resetResizingTopLevel();
 
           // Variables
-          struct coR_xdg_toplevel *focusedTopLevel =
-              coRState->focusedCoRSurface;
+          struct coR_surface *focusedTopLevel = coRState->focusedCoRSurface;
           struct coR_workspace *workspace =
               coRState->workspaces + focusedTopLevel->onWorkspaceNum;
-          struct wlr_scene_tree *toplevelTree =
-              focusedTopLevel->xdgTopLevel->base->data;
 
           // Set fullscreen (decoration) possibly temp
-          wlr_xdg_toplevel_set_fullscreen(focusedTopLevel->xdgTopLevel, true);
+          surfaceSetFullscreen(focusedTopLevel, true);
 
           // Move & Resize the surface
-          setXdgTopLevelPosTemp(focusedTopLevel, 0, 0);
-          setXdgTopLevelSizeTemp(focusedTopLevel,
-                                 workspace->currentOutput->width,
-                                 workspace->currentOutput->height);
+          surfaceSetPosTemp(focusedTopLevel, workspace->posX, workspace->posY);
+          surfaceSetSizeTemp(focusedTopLevel, workspace->currentOutput->width,
+                             workspace->currentOutput->height);
 
           // Change the scene tree
-          wlr_scene_node_reparent(&toplevelTree->node, &coRState->scene->tree);
-          wlr_scene_node_place_below(&toplevelTree->node,
+          wlr_scene_node_reparent(surfaceGetNode(focusedTopLevel),
+                                  &coRState->scene->tree);
+          wlr_scene_node_place_below(surfaceGetNode(focusedTopLevel),
                                      &coRState->cursorScene->node);
           wlr_scene_node_set_enabled(&workspace->rootNode->node, false);
 
           // Disable the fullscreen of an surface
         } else {
           // Variables
-          struct coR_xdg_toplevel *focusedTopLevel =
-              coRState->focusedCoRSurface;
+          struct coR_surface *focusedTopLevel = coRState->focusedCoRSurface;
           struct coR_workspace *workspace =
               coRState->workspaces + focusedTopLevel->onWorkspaceNum;
-          struct wlr_scene_tree *toplevelTree =
-              focusedTopLevel->xdgTopLevel->base->data;
 
           // Set fullscreen (decoration) possibly temp
-          wlr_xdg_toplevel_set_fullscreen(focusedTopLevel->xdgTopLevel, false);
+          surfaceSetFullscreen(focusedTopLevel, false);
 
           // Move & Resize the surface
-          setXdgTopLevelSizeTemp(focusedTopLevel, focusedTopLevel->sizeX,
-                                 focusedTopLevel->sizeY);
-          setXdgTopLevelPosTemp(focusedTopLevel, focusedTopLevel->posX,
-                                focusedTopLevel->posY);
+          surfaceSetSizeTemp(focusedTopLevel, focusedTopLevel->sizeX,
+                             focusedTopLevel->sizeY);
+          surfaceSetPosTemp(focusedTopLevel, focusedTopLevel->posX,
+                            focusedTopLevel->posY);
 
           // Change the scene tree
-          wlr_scene_node_reparent(&toplevelTree->node, workspace->rootNode);
+          wlr_scene_node_reparent(surfaceGetNode(focusedTopLevel),
+                                  workspace->rootNode);
           wlr_scene_node_set_enabled(&workspace->rootNode->node, true);
-
-          wlr_xdg_toplevel_set_fullscreen(
-              ((struct coR_xdg_toplevel *)coRState->focusedCoRSurface)
-                  ->xdgTopLevel,
-              false);
         }
       }
       return;
@@ -115,6 +115,9 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
       int otherWorkspaceNum = event->keycode - 1;
       if (otherWorkspaceNum > 9)
         otherWorkspaceNum = 0;
+
+      // TODO: should not change the workspace if contain a surface in
+      // fullscreen
 
       printf("%d\n", otherWorkspaceNum);
       if (coRState->focusedWorkspaceNum != otherWorkspaceNum) {

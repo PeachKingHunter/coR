@@ -5,15 +5,12 @@
 #include "wlr/backend/libinput.h"
 
 // My Lib
-#include "../surfaces/surfaceAbstraction.h"
-#include "../surfaces/coRXdgTopLevel.h"
 #include "../surfaces/coRXSurface.h"
 #include "../coRState.h"
 #include "coRCursor.h"
 
 // Lib c
 #include <unistd.h>
-#include <signal.h>
 
 // Structure
 struct coR_keyboard_input {

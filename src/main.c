@@ -147,8 +147,6 @@ int main() {
       wlr_layer_shell_v1_create(display, LAYER_SHELL_VERSION);
   if (layerShell == NULL)
     exit(1);
-  // Layer shell TODO: focused surface -> diffrenciate with
-  // xdgTopLevel
 
   //  5.3 Scene root for surface position
   coRState.scene = wlr_scene_create();
@@ -279,8 +277,6 @@ int main() {
 }
 
 /* TODO: Erreur à réglé:
-- Finir le XWayland pour placer les application comme les application wayland
-- Fullscreen on good monitor (should take workspace posX)
 - Ajouter la possibilité de changer la config avec un fichier texte
 - Être heureux (｡◕‿‿◕｡)
 */

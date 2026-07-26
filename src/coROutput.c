@@ -87,7 +87,7 @@ void newOutputHandler(struct wl_listener *listener, void *data) {
   wlr_output_commit_state(output, &state);
   wlr_output_state_finish(&state);
 
-  // 4. Layout for multiscreen, scale and other (todo later)
+  // 4. Layout for multiscreen, scale and other
   // wlr_output_layout_add(coRState->outputLayout, output, 0, 0);
   struct wlr_output_layout_output *outputLayoutOutput =
       wlr_output_layout_add_auto(coRState->outputLayout, output);

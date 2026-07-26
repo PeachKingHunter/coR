@@ -1,4 +1,5 @@
 #include "coRLayerSurface.h"
+#include "../coROutput.h"
 
 
 void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
