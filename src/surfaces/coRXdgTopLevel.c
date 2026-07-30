@@ -4,6 +4,9 @@
 #include "../inputs/coRCursor.h"
 #include "../inputs/coRInputs.h"
 #include "coRSurface.h"
+#include "src/surfaces/coRLayerSurface.h"
+#include "wlr/util/box.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <wayland-util.h>
 
@@ -65,10 +68,20 @@ static void commitXdgTopLevelHandler(struct wl_listener *listener, void *data) {
   }
 
   printf("start P4\n");
-  surfaceSetPos(coRSurface, 0, 0);
-  surfaceSetSize(coRSurface, workspace->currentOutput->width,
-                 workspace->currentOutput->height);
+  // Calcul usable_area (not taken by docks)
+  struct wlr_box box;
+  getUsableArea(coRState, workspace->currentOutput, &box);
+
+  // Take the entire screen (exept docks)
+  surfaceSetPos(coRSurface, box.x, box.y);
+  surfaceSetSize(coRSurface, box.width, box.height);
   wl_list_insert(&workspace->xdgTopLevels, &coRSurface->link);
+
+  // // Take the entire screen (exept docks
+  // surfaceSetPos(coRSurface, 0, 0);
+  // surfaceSetSize(coRSurface, workspace->currentOutput->width,
+  //                workspace->currentOutput->height);
+  // wl_list_insert(&workspace->xdgTopLevels, &coRSurface->link);
 }
 
 static void mapXdgTopLevelHandler(struct wl_listener *listener, void *data) {
@@ -270,6 +283,10 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
   // Var
   struct wlr_output *output = coRState->focusedOutput;
 
+  // Get usable area of the output
+  struct wlr_box box;
+  getUsableArea(coRState, output, &box);
+
   // -- resize in axis X --
   // Variables
   int deltaX = (int)(coRState->cursor->x) - startCursorPosX;
@@ -286,12 +303,12 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
   int possibleSides = 2;
 
   // No resize sides glued to output's border
-  if (startPosX == 0) {
+  if (startPosX <= box.x) {
     side = 0;
     possibleSides--;
   }
 
-  if (startPosX + startSizeX == output->width) {
+  if (startPosX + startSizeX+1 >= box.width + box.x) {
     side = 1;
     possibleSides--;
   }
@@ -405,12 +422,12 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
   possibleSides = 2;
 
   // No resize sides glued to output's border
-  if (startPosY == 0) {
+  if (startPosY <= box.y) {
     side = 0;
     possibleSides--;
   }
 
-  if (startPosY + startSizeY == output->height) {
+  if (startPosY + startSizeY+1 >= box.height + box.y) {
     side = 1;
     possibleSides--;
   }
@@ -503,6 +520,31 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
   // Verif minimal size
   if (newSizeX <= 22 || newSizeY <= 22)
     return;
+
+  // No resize sides glued to output's border
+  if (startPosX > box.x) {
+    if (newPosX <= box.x) {
+      return;
+    }
+  }
+
+  if (startPosX + startSizeX < box.width + box.x) {
+    if (newPosX + newSizeX >= box.width + box.x) {
+      return;
+    }
+  }
+
+  if (startPosY > box.y) {
+    if (newPosY <= box.y) {
+      return;
+    }
+  }
+
+  if (startPosY + startSizeY < box.height + box.y) {
+    if (newPosY + newSizeY >= box.height + box.y) {
+      return;
+    }
+  }
 
   surfaceSetPos(resizingTopLevel, newPosX, newPosY);
   surfaceSetSize(resizingTopLevel, newSizeX, newSizeY);

@@ -33,6 +33,7 @@ struct coR_state {
   struct wlr_compositor *compositor;
   struct wlr_scene *scene;
   struct wlr_scene_output_layout *sceneLayout;
+  struct wl_list docks; // All layerSurface docked on border (3 border)
 
   // Workspaces
   struct coR_workspace workspaces[NB_WORKSPACE];

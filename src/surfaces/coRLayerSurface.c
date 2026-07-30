@@ -2,6 +2,7 @@
 #include "../coROutput.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <wayland-util.h>
 
 void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   // printf("-> commitLayerSurfaceHandler\n");
@@ -31,6 +32,7 @@ void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
     }
   }
 
+  coRLayerSurface->coROutput = wantedCoROutput;
   int outputSizeX = wantedCoROutput->output->width;
   int outputSizeY = wantedCoROutput->output->height;
 
@@ -51,16 +53,16 @@ void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   // autre par en global pour toute les layerSurfaces
 
   // Wanted pos
-  int posX = 0;
-  int posY = 0;
+  int posXInWorkspace = 0;
+  int posYInWorkspace = 0;
 
   // TODO:Get pos from anchor
   uint32_t anchor = layerSurface->current.anchor;
   printf("anchor: %d\n", anchor);
   if (anchor == 0 || anchor == 15) {
     // Pas d'anchor ou sur tous les coté => au centre
-    posX = (outputSizeX - sizeX) / 2.;
-    posY = (outputSizeY - sizeY) / 2.;
+    posXInWorkspace = (outputSizeX - sizeX) / 2.;
+    posYInWorkspace = (outputSizeY - sizeY) / 2.;
 
   } else {
     // Top Anchor 1
@@ -68,32 +70,41 @@ void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
     // Left Anchor 4
     // Right Anchor 8
 
+    // Have 3 border -> dock
+    if (anchor == 7 || anchor == 11 || anchor == 13 || anchor == 14)
+      wl_list_insert(&coRState->docks, &coRLayerSurface->link);
+
     // Pas top mais bottom
     if (!(anchor & (1 << 0)) && (anchor & (1 << 1))) {
-      posY = outputSizeY - sizeY;
+      posYInWorkspace = outputSizeY - sizeY;
     }
     // Pas gauche mais droite
     if (!(anchor & (1 << 2)) && (anchor & (1 << 3))) {
-      posX = outputSizeX - sizeX;
+      posXInWorkspace = outputSizeX - sizeX;
     }
   }
 
   // TODO here
+  int outputPosX = wantedCoROutput->sceneOutput->x;
+  int outputPosY = wantedCoROutput->sceneOutput->y;
 
-  posX += wantedCoROutput->sceneOutput->x;
-  posY += wantedCoROutput->sceneOutput->y;
+  int posX = posXInWorkspace + outputPosX;
+  int posY = posYInWorkspace + outputPosY;
 
   printf("wanted pos: %d, %d\n", posX, posY);
 
   // Get the workspace wanted by itself
-  struct wlr_box full_area = {.x = posX,
-                              .y = posY,
-                              .width = wantedCoROutput->output->width,
-                              .height = wantedCoROutput->output->height};
-  struct wlr_box usable_area = {.x = posX,
-                                .y = posY,
-                                .width = wantedCoROutput->output->width,
-                                .height = wantedCoROutput->output->height};
+  struct wlr_box full_area = {.x = outputPosX,
+                              .y = outputPosY,
+                              .width = outputSizeX,
+                              .height = outputSizeY};
+
+  coRLayerSurface->posX = posX;
+  coRLayerSurface->posY = posY;
+  coRLayerSurface->sizeX = sizeX;
+  coRLayerSurface->sizeY = sizeY;
+  struct wlr_box usable_area = {
+      .x = posX, .y = posY, .width = sizeX, .height = sizeY};
   wlr_scene_layer_surface_v1_configure(coRLayerSurface->sceneLayerSurface,
                                        &full_area, &usable_area);
 
@@ -152,6 +163,10 @@ void destroyLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   wl_list_remove(&coRLayerSurface->unmapListener.link);
   wl_list_remove(&coRLayerSurface->destroyListener.link);
 
+  uint32_t anchor = coRLayerSurface->layerSurface->current.anchor;
+  if (anchor == 7 || anchor == 11 || anchor == 13 || anchor == 14)
+    wl_list_remove(&coRLayerSurface->link);
+
   // Free memory
   free(coRLayerSurface);
 }
@@ -174,6 +189,7 @@ void newLayerSurfaceHandler(struct wl_listener *listener, void *data) {
 
   coRLayerSurface->layerSurface = layerSurface;
   coRLayerSurface->coRState = coRState;
+  coRLayerSurface->coROutput = NULL;
 
   // Add it to the scene
   coRLayerSurface->sceneLayerSurface =
@@ -195,4 +211,54 @@ void newLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   coRLayerSurface->destroyListener.notify = destroyLayerSurfaceHandler;
   wl_signal_add(&layerSurface->surface->events.destroy,
                 &coRLayerSurface->destroyListener);
+}
+
+void getUsableArea(struct coR_state *coRState, struct wlr_output *output,
+                   struct wlr_box *usableArea) {
+  int posX = 0;
+  int posY = 0;
+  int sizeX = output->width;
+  int sizeY = output->height;
+
+  struct coR_layer_surface *tmpCoRLS;
+  wl_list_for_each(tmpCoRLS, &coRState->docks, link) {
+    uint32_t anchor = tmpCoRLS->layerSurface->current.anchor;
+    // Tmp disable (hypothesis: Same docks on all screen)
+    // if (tmpCoRLS->coROutput->output != workspace->currentOutput)
+    //   continue;
+
+    // Dock petit X (à gauche)
+    if (tmpCoRLS->posX <= posX && posX <= tmpCoRLS->posX + tmpCoRLS->sizeX &&
+        !(anchor & (1 << 3))) {
+      sizeX -= tmpCoRLS->posX + tmpCoRLS->sizeX - posX;
+      posX = tmpCoRLS->posX + tmpCoRLS->sizeX;
+    }
+
+    // Dock grand X (à droite)
+    if (tmpCoRLS->posX <= posX + sizeX &&
+        posX + sizeX <= tmpCoRLS->posX + tmpCoRLS->sizeX &&
+        !(anchor & (1 << 2))) {
+      printf("enterXD\n");
+      sizeX -= posX + sizeX - tmpCoRLS->posX;
+    }
+
+    // Dock grand Y (en bas)
+    if (tmpCoRLS->posY <= posY + sizeY &&
+        posY + sizeY <= tmpCoRLS->posY + tmpCoRLS->sizeY &&
+        !(anchor & (1 << 0))) {
+      printf("enterYB\n");
+      sizeY -= posY + sizeY - tmpCoRLS->posY;
+    }
+
+    // Dock petit Y (en haut)
+    if (tmpCoRLS->posY <= posY && posY <= tmpCoRLS->posY + tmpCoRLS->sizeY &&
+        !(anchor & (1 << 1))) {
+      sizeY -= tmpCoRLS->posY + tmpCoRLS->sizeY - posY;
+      posY = tmpCoRLS->posY + tmpCoRLS->sizeY;
+    }
+  }
+  usableArea->x = posX;
+  usableArea->y = posY;
+  usableArea->width = sizeX;
+  usableArea->height = sizeY;
 }

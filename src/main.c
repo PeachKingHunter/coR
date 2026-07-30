@@ -147,6 +147,7 @@ int main() {
       wlr_layer_shell_v1_create(display, LAYER_SHELL_VERSION);
   if (layerShell == NULL)
     exit(1);
+  wl_list_init(&coRState.docks);
 
   //  5.3 Scene root for surface position
   coRState.scene = wlr_scene_create();
@@ -277,11 +278,10 @@ int main() {
 }
 
 /* TODO: Erreur à réglé:
-- LayerSurface -> Get focus quand créer | Done
-- Fullscreen quand demandé par l'application | Done
-- LayerSurface -> Point d'ancrage
 - Ajout des autre types de pheriphérique (touch,...)
 - Crash si aucun écran
+- Selection de surface avec clavier (décaler le focus sur les surfaces adjacentes)
+- Changer une surface de workspace avec un racourci clavier
 - Ajouter la possibilité de changer la config avec un fichier texte
   | Régler l'ordre des écrans
   | Direction du scroll 
