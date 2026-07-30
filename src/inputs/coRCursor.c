@@ -287,7 +287,7 @@ void cursorAxisHandler(struct wl_listener *listener, void *data) {
   // Envoie au client
   wlr_seat_pointer_notify_axis(
       coRState->seat, event->time_msec, event->orientation, event->delta,
-      event->delta_discrete, event->source, event->relative_direction);
+      event->delta_discrete, event->source, -event->relative_direction);
   wlr_seat_pointer_notify_frame(coRState->seat);
 }
 

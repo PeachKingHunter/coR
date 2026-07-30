@@ -277,6 +277,13 @@ int main() {
 }
 
 /* TODO: Erreur à réglé:
+- LayerSurface -> Get focus quand créer | Done
+- Fullscreen quand demandé par l'application | Done
+- LayerSurface -> Point d'ancrage
+- Ajout des autre types de pheriphérique (touch,...)
+- Crash si aucun écran
 - Ajouter la possibilité de changer la config avec un fichier texte
+  | Régler l'ordre des écrans
+  | Direction du scroll 
 - Être heureux (｡◕‿‿◕｡)
 */

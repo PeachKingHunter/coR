@@ -1,8 +1,9 @@
 #ifndef Surface_Abstraction_H
 #define Surface_Abstraction_H
+#include "coRLayerSurface.h"
 #pragma once
 
-#include "../src/coRState.h"
+#include "../coRState.h"
 #include "../coRState.h"
 #include <wlr/xwayland/xwayland.h>
 
@@ -31,6 +32,7 @@ struct coR_surface {
 
 int surfaceIsFullScreen(struct coR_surface *coRSurface);
 struct wlr_scene_node *surfaceGetNode(struct coR_surface  *coRSurface);
+struct wlr_surface *surfaceGetSurface(struct coR_surface  *coRSurface);
 
 int surfaceSplit(struct coR_surface *toSplit, struct coR_surface *newCoRSurface);
 
@@ -47,6 +49,8 @@ int surfaceSetPos(struct coR_surface  *coRSurface, float newPosX, float newPosY)
 int surfaceSetSizeTemp(struct coR_surface  *coRSurface, float newSizeX, float newSizeY);
 int surfaceSetPosTemp(struct coR_surface  *coRSurface, float newPosX, float newPosY);
 
-int surfaceSetFullscreen(struct coR_surface *coRSurface, bool mode);
+// Set the mode fullscreen of an surface
+int surfaceSetFullscreenMode(struct coR_surface *coRSurface, bool mode);
+void surfaceChangeFullscreen(struct coR_state *coRState, struct coR_surface *coRSurface);
 
 #endif

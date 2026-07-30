@@ -1,6 +1,6 @@
 #include <stdbool.h>
 #include <wayland-server-core.h>
-#include "../src/coRState.h"
+#include "../coRState.h"
 #include "coRSurface.h"
 
 #include <wayland-server-core.h>
@@ -25,6 +25,7 @@ struct coR_xsurface {
   struct wl_listener unMapListener;
   struct wl_listener associateListener;
   struct wl_listener dissociateListener;
+  struct wl_listener fullscreenListener;
   struct wl_listener destroyListener;
 };
 

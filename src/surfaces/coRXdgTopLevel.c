@@ -5,6 +5,7 @@
 #include "../inputs/coRInputs.h"
 #include "coRSurface.h"
 #include <stdio.h>
+#include <wayland-util.h>
 
 static void commitXdgTopLevelHandler(struct wl_listener *listener, void *data) {
   // printf("-> commitXdgTopLevelHandler\n");
@@ -155,10 +156,22 @@ endResizeInDestroyFunc:
   wl_list_remove(&coRXdgTopLevel->unMapListener.link);
   wl_list_remove(&coRXdgTopLevel->destroyListener.link);
   wl_list_remove(&coRXdgTopLevel->commitListener.link);
+  wl_list_remove(&coRXdgTopLevel->fullscreenListener.link);
 
   // 3.
   free(coRXdgTopLevel);
   printf("<- destroy XdgTopLevel\n");
+}
+
+static void fullscreenXdgTopLevelHandler(struct wl_listener *listener,
+                                         void *data) {
+  printf("-> fullscreen request XdgTopLevel\n");
+
+  struct coR_xdg_toplevel *coRXdgTopLevel =
+      wl_container_of(listener, coRXdgTopLevel, fullscreenListener);
+  struct coR_state *coRState = coRXdgTopLevel->coRSurface.coRState;
+
+  surfaceChangeFullscreen(coRState, (struct coR_surface *)coRXdgTopLevel);
 }
 
 void newXdgTopLevelHandler(struct wl_listener *listener, void *data) {
@@ -224,6 +237,10 @@ void newXdgTopLevelHandler(struct wl_listener *listener, void *data) {
 
   coRXdgTopLevel->destroyListener.notify = destroyXdgTopLevelHandler;
   wl_signal_add(&xdgTopLevel->events.destroy, &coRXdgTopLevel->destroyListener);
+
+  coRXdgTopLevel->fullscreenListener.notify = fullscreenXdgTopLevelHandler;
+  wl_signal_add(&xdgTopLevel->events.request_fullscreen,
+                &coRXdgTopLevel->fullscreenListener);
 }
 
 /* Resize toplevel for cursor motion
@@ -315,10 +332,10 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
             (tmpPosX + tmpSizeX >= lastNewPosX - 2 &&
              tmpPosX <= lastNewPosX - 2 + lastNewSizeX)) {
           if (tmpPosX + tmpSizeX * 8 / 10 < newPosX + 5) {
-          // Resize
-          if (surfaceSetSize(tmpCoRSurface, newPosX - tmpPosX,
-                             tmpCoRSurface->sizeY) == -1)
-            return;
+            // Resize
+            if (surfaceSetSize(tmpCoRSurface, newPosX - tmpPosX,
+                               tmpCoRSurface->sizeY) == -1)
+              return;
           }
         }
       }

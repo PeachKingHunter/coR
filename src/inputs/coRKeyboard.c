@@ -58,55 +58,7 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
 
     // touche f -> Fullscreen
     if (event->keycode == 33) {
-      if (coRState->focusedCoRSurface != NULL) {
-        // Enable the fullscreen of an surface
-        if (surfaceIsFullScreen(coRState->focusedCoRSurface) == 0) {
-
-          resetMovingTopLevel(coRState);
-          resetResizingTopLevel();
-
-          // Variables
-          struct coR_surface *focusedTopLevel = coRState->focusedCoRSurface;
-          struct coR_workspace *workspace =
-              coRState->workspaces + focusedTopLevel->onWorkspaceNum;
-
-          // Set fullscreen (decoration) possibly temp
-          surfaceSetFullscreen(focusedTopLevel, true);
-
-          // Move & Resize the surface
-          surfaceSetPosTemp(focusedTopLevel, workspace->posX, workspace->posY);
-          surfaceSetSizeTemp(focusedTopLevel, workspace->currentOutput->width,
-                             workspace->currentOutput->height);
-
-          // Change the scene tree
-          wlr_scene_node_reparent(surfaceGetNode(focusedTopLevel),
-                                  &coRState->scene->tree);
-          wlr_scene_node_place_below(surfaceGetNode(focusedTopLevel),
-                                     &coRState->cursorScene->node);
-          wlr_scene_node_set_enabled(&workspace->rootNode->node, false);
-
-          // Disable the fullscreen of an surface
-        } else {
-          // Variables
-          struct coR_surface *focusedTopLevel = coRState->focusedCoRSurface;
-          struct coR_workspace *workspace =
-              coRState->workspaces + focusedTopLevel->onWorkspaceNum;
-
-          // Set fullscreen (decoration) possibly temp
-          surfaceSetFullscreen(focusedTopLevel, false);
-
-          // Move & Resize the surface
-          surfaceSetSizeTemp(focusedTopLevel, focusedTopLevel->sizeX,
-                             focusedTopLevel->sizeY);
-          surfaceSetPosTemp(focusedTopLevel, focusedTopLevel->posX,
-                            focusedTopLevel->posY);
-
-          // Change the scene tree
-          wlr_scene_node_reparent(surfaceGetNode(focusedTopLevel),
-                                  workspace->rootNode);
-          wlr_scene_node_set_enabled(&workspace->rootNode->node, true);
-        }
-      }
+      surfaceChangeFullscreen(coRState, coRState->focusedCoRSurface);
       return;
     }
 

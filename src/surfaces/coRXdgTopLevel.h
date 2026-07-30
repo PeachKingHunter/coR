@@ -23,6 +23,7 @@ struct coR_xdg_toplevel {
   struct wl_listener unMapListener;
   struct wl_listener destroyListener;
   struct wl_listener commitListener;
+  struct wl_listener fullscreenListener;
 };
 
 // Methods

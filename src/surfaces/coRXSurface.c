@@ -188,6 +188,18 @@ endResizeInDissociateFunc:
   wl_list_remove(&coRXSurface->unMapListener.link);
 }
 
+static void xwaylandFullscreenHandler(struct wl_listener *listener,
+                                         void *data) {
+  printf("->fullscren xwayland\n");
+
+  struct coR_xsurface *coRXSurface =
+      wl_container_of(listener, coRXSurface, fullscreenListener);
+  struct coR_state *coRState = coRXSurface->coRSurface.coRState;
+
+  surfaceChangeFullscreen(coRState, (struct coR_surface *)coRXSurface);
+}
+
+
 void xwaylandDestroyHandler(struct wl_listener *listener, void *data) {
   printf("-> xwayland Destroy\n");
 
@@ -198,6 +210,7 @@ void xwaylandDestroyHandler(struct wl_listener *listener, void *data) {
   wl_list_remove(&coRXSurface->associateListener.link);
   wl_list_remove(&coRXSurface->dissociateListener.link);
   wl_list_remove(&coRXSurface->destroyListener.link);
+  wl_list_remove(&coRXSurface->fullscreenListener.link);
 
   free(coRXSurface);
 }
@@ -231,6 +244,10 @@ void xwaylandNewSurfaceHandler(struct wl_listener *listener, void *data) {
 
   coRXSurface->destroyListener.notify = xwaylandDestroyHandler;
   wl_signal_add(&xsurface->events.destroy, &coRXSurface->destroyListener);
+
+
+  coRXSurface->fullscreenListener.notify = xwaylandFullscreenHandler;
+  wl_signal_add(&xsurface->events.request_fullscreen, &coRXSurface->fullscreenListener);
 }
 
 void xwaylandReadyHandler(struct wl_listener *listener, void *data) {

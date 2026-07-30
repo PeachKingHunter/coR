@@ -1,6 +1,7 @@
 #include "coRLayerSurface.h"
 #include "../coROutput.h"
-
+#include <stdint.h>
+#include <stdio.h>
 
 void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   // printf("-> commitLayerSurfaceHandler\n");
@@ -11,10 +12,17 @@ void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   struct wlr_layer_surface_v1 *layerSurface = coRLayerSurface->layerSurface;
   struct coR_state *coRState = coRLayerSurface->coRState;
 
+  // Only the first commit
+  if (!layerSurface->initialized || layerSurface->configured)
+    return;
+
+  printf("-> first commit layer surface\n");
+
   // Recup un écran sinon ne fait rien et attends un prochaine fois
   struct coR_output *wantedCoROutput = NULL;
   if (layerSurface->output != NULL) {
     wantedCoROutput = layerSurface->output->data;
+    printf("Have wanted output\n");
   } else {
     if (coRState->focusedOutput) {
       wantedCoROutput = coRState->focusedOutput->data;
@@ -23,35 +31,59 @@ void commitLayerSurfaceHandler(struct wl_listener *listener, void *data) {
     }
   }
 
-  if (!layerSurface->initialized || layerSurface->configured)
-    return;
-
-  printf("-> first commit layer surface\n");
+  int outputSizeX = wantedCoROutput->output->width;
+  int outputSizeY = wantedCoROutput->output->height;
 
   // Get size wanted
   int sizeX = layerSurface->current.desired_width;
+  printf("sizeX: %d\n", sizeX);
   if (sizeX == 0)
-    sizeX = wantedCoROutput->output->width;
+    sizeX = outputSizeX;
 
   int sizeY = layerSurface->current.desired_height;
+  printf("sizeY: %d\n", sizeY);
   if (sizeY == 0)
-    sizeY = wantedCoROutput->output->height;
+    sizeY = outputSizeY;
 
-  // TODO:Get pos from anchor
+  printf("wanted size: %d, %d\n", sizeX, sizeY);
+
+  wlr_layer_surface_v1_configure(layerSurface, sizeX, sizeY); // TODO: mettre
+  // autre par en global pour toute les layerSurfaces
+
+  // Wanted pos
   int posX = 0;
   int posY = 0;
 
+  // TODO:Get pos from anchor
+  uint32_t anchor = layerSurface->current.anchor;
+  printf("anchor: %d\n", anchor);
+  if (anchor == 0 || anchor == 15) {
+    // Pas d'anchor ou sur tous les coté => au centre
+    posX = (outputSizeX - sizeX) / 2.;
+    posY = (outputSizeY - sizeY) / 2.;
+
+  } else {
+    // Top Anchor 1
+    // Bottom Anchor 2
+    // Left Anchor 4
+    // Right Anchor 8
+
+    // Pas top mais bottom
+    if (!(anchor & (1 << 0)) && (anchor & (1 << 1))) {
+      posY = outputSizeY - sizeY;
+    }
+    // Pas gauche mais droite
+    if (!(anchor & (1 << 2)) && (anchor & (1 << 3))) {
+      posX = outputSizeX - sizeX;
+    }
+  }
+
   // TODO here
-  //
 
   posX += wantedCoROutput->sceneOutput->x;
   posY += wantedCoROutput->sceneOutput->y;
 
-  printf("wanted size: %d, %d\n", sizeX, sizeY);
   printf("wanted pos: %d, %d\n", posX, posY);
-
-  wlr_layer_surface_v1_configure(layerSurface, sizeX, sizeY); // TODO: mettre
-  // autre par en global pour toute les layerSurfaces
 
   // Get the workspace wanted by itself
   struct wlr_box full_area = {.x = posX,
@@ -81,9 +113,11 @@ void mapLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   // Variables
   struct coR_layer_surface *coRLayerSurface =
       wl_container_of(listener, coRLayerSurface, mapListener);
-  // struct wlr_layer_surface_v1 *layerSurface = coRLayerSurface->layerSurface;
+  struct coR_state *coRState = coRLayerSurface->coRState;
+  struct wlr_layer_surface_v1 *layerSurface = coRLayerSurface->layerSurface;
 
-  // TODO: add get focus
+  // get focus
+  inputsChangeSurfaceToFocus(coRState, layerSurface->surface, 0, 0);
 }
 
 void unmapLayerSurfaceHandler(struct wl_listener *listener, void *data) {

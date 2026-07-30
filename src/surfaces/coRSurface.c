@@ -1,9 +1,10 @@
 #include "coRSurface.h"
 
+#include "../coRState.h"
+#include "../inputs/coRCursor.h"
+#include "coRLayerSurface.h"
 #include "coRXSurface.h"
 #include "coRXdgTopLevel.h"
-#include "../inputs/coRCursor.h"
-#include "../coRState.h"
 
 int surfaceIsFullScreen(struct coR_surface *coRSurface) {
   // Verif entry
@@ -104,6 +105,27 @@ struct wlr_scene_node *surfaceGetNode(struct coR_surface *coRSurface) {
   return NULL;
 }
 
+struct wlr_surface *surfaceGetSurface(struct coR_surface *coRSurface) {
+  // Verif entry
+  if (coRSurface == NULL)
+    return NULL;
+
+  // Get the type
+  int type = coRSurface->type;
+
+  if (type == TYPE_XDG_TOPLEVEL) {
+    struct wlr_xdg_toplevel *xdgToplevel = coRSurface->surfaceAbs;
+    return xdgToplevel->base->surface;
+  }
+
+  if (type == TYPE_XSURFACE) {
+    struct wlr_xwayland_surface *xsurface = coRSurface->surfaceAbs;
+    return xsurface->surface;
+  }
+
+  return NULL;
+}
+
 /*
   Just change the size/position of a surface with a coR_surface
 */
@@ -199,7 +221,8 @@ int surfaceSetPosTemp(struct coR_surface *coRSurface, float newPosX,
   return -1;
 }
 
-int surfaceSetFullscreen(struct coR_surface *coRSurface, bool mode) {
+// Set the mode fullscreen of an surface
+int surfaceSetFullscreenMode(struct coR_surface *coRSurface, bool mode) {
   // Verif entry
   if (coRSurface == NULL)
     return -1;
@@ -217,4 +240,59 @@ int surfaceSetFullscreen(struct coR_surface *coRSurface, bool mode) {
   }
 
   return -1;
+}
+
+void surfaceChangeFullscreen(struct coR_state *coRState,
+                             struct coR_surface *coRSurface) {
+  // Verif entry
+  if (coRSurface == NULL || coRState == NULL)
+    return;
+
+  // Enable the fullscreen of an surface
+  if (surfaceIsFullScreen(coRState->focusedCoRSurface) == 0) {
+
+    resetMovingTopLevel(coRState);
+    resetResizingTopLevel();
+
+    // Variables
+    struct coR_surface *focusedTopLevel = coRState->focusedCoRSurface;
+    struct coR_workspace *workspace =
+        coRState->workspaces + focusedTopLevel->onWorkspaceNum;
+
+    // Set fullscreen (decoration) possibly temp
+    surfaceSetFullscreenMode(focusedTopLevel, true);
+
+    // Move & Resize the surface
+    surfaceSetPosTemp(focusedTopLevel, workspace->posX, workspace->posY);
+    surfaceSetSizeTemp(focusedTopLevel, workspace->currentOutput->width,
+                       workspace->currentOutput->height);
+
+    // Change the scene tree
+    wlr_scene_node_reparent(surfaceGetNode(focusedTopLevel),
+                            &coRState->scene->tree);
+    wlr_scene_node_place_below(surfaceGetNode(focusedTopLevel),
+                               &coRState->cursorScene->node);
+    wlr_scene_node_set_enabled(&workspace->rootNode->node, false);
+
+    // Disable the fullscreen of an surface
+  } else {
+    // Variables
+    struct coR_surface *focusedTopLevel = coRState->focusedCoRSurface;
+    struct coR_workspace *workspace =
+        coRState->workspaces + focusedTopLevel->onWorkspaceNum;
+
+    // Set fullscreen (decoration) possibly temp
+    surfaceSetFullscreenMode(focusedTopLevel, false);
+
+    // Move & Resize the surface
+    surfaceSetSizeTemp(focusedTopLevel, focusedTopLevel->sizeX,
+                       focusedTopLevel->sizeY);
+    surfaceSetPosTemp(focusedTopLevel, focusedTopLevel->posX,
+                      focusedTopLevel->posY);
+
+    // Change the scene tree
+    wlr_scene_node_reparent(surfaceGetNode(focusedTopLevel),
+                            workspace->rootNode);
+    wlr_scene_node_set_enabled(&workspace->rootNode->node, true);
+  }
 }
