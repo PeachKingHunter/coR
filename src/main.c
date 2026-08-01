@@ -277,13 +277,16 @@ int main() {
   exit(1);
 }
 
-/* TODO: Erreur à réglé:
-- Ajout des autre types de pheriphérique (touch,...)
+/* TODO:
+- Tablet device input
+- Decoration (disable it)
 - Crash si aucun écran
+- Changer le système de gestion des fenêtre !!
 - Selection de surface avec clavier (décaler le focus sur les surfaces adjacentes)
 - Changer une surface de workspace avec un racourci clavier
 - Ajouter la possibilité de changer la config avec un fichier texte
   | Régler l'ordre des écrans
   | Direction du scroll 
+- Touch device input
 - Être heureux (｡◕‿‿◕｡)
 */

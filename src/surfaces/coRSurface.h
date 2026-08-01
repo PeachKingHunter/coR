@@ -1,6 +1,5 @@
 #ifndef Surface_Abstraction_H
 #define Surface_Abstraction_H
-#include "coRLayerSurface.h"
 #pragma once
 
 #include "../coRState.h"

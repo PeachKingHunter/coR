@@ -1,6 +1,7 @@
 #include "./coRCursor.h"
 #include "../surfaces/coRXdgTopLevel.h"
 #include "coRInputs.h"
+#include "src/coRState.h"
 #include "src/surfaces/coRSurface.h"
 #include <stddef.h>
 #include <unistd.h>
@@ -20,6 +21,23 @@ int startMovingPosX, startMovingPosY;
 
 extern int lastDeltaY;
 
+void startResizingSurface(struct coR_state *coRState,
+                          struct coR_surface *newResizingSurface) {
+  resizingTopLevel = newResizingSurface;
+  startResizingCursorPosX = coRState->cursor->x;
+  startResizingCursorPosY = coRState->cursor->y;
+  startResizingPosX = resizingTopLevel->posX;
+  startResizingPosY = resizingTopLevel->posY;
+  startResizingWidth = resizingTopLevel->sizeX;
+  startResizingHeight = resizingTopLevel->sizeY;
+  lastDeltaX = 0;
+  lastDeltaY = 0;
+}
+
+void stopResizingSurface() {
+  resizingTopLevel = NULL;
+}
+
 // ---- ## Curseur ## ---- //
 void cursorButtonHandler(struct wl_listener *listener, void *data) {
   // printf("-> cursorButtonHandler\n");
@@ -34,13 +52,7 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
     if (event->state == WL_POINTER_BUTTON_STATE_PRESSED && superPressed &&
         coRState->focusedCoRSurface) {
       if (surfaceIsFullScreen(coRState->focusedCoRSurface) == 0) {
-        resizingTopLevel = coRState->focusedCoRSurface;
-        startResizingCursorPosX = coRState->cursor->x;
-        startResizingCursorPosY = coRState->cursor->y;
-        startResizingPosX = resizingTopLevel->posX;
-        startResizingPosY = resizingTopLevel->posY;
-        startResizingWidth = resizingTopLevel->sizeX;
-        startResizingHeight = resizingTopLevel->sizeY;
+        startResizingSurface(coRState, coRState->focusedCoRSurface);
 
         lastDeltaX = 0;
         lastDeltaY = 0;
@@ -148,7 +160,8 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
         surfaceSetPos(movingTopLevel, 0, 0);
         surfaceSetSize(movingTopLevel, workspace->currentOutput->width,
                        workspace->currentOutput->height);
-        wlr_scene_node_reparent(surfaceGetNode(movingTopLevel), workspace->rootNode);
+        wlr_scene_node_reparent(surfaceGetNode(movingTopLevel),
+                                workspace->rootNode);
         movingTopLevel->onWorkspaceNum = coRState->focusedWorkspaceNum;
 
         // Resize all surface to take the place left
@@ -179,8 +192,8 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
 
       // Pas de surface trouvé -> On la remet à sa position initial
       else if (movingTopLevel != NULL) {
-        wlr_scene_node_set_position(surfaceGetNode(movingTopLevel), movingTopLevel->posX,
-                                    movingTopLevel->posY);
+        wlr_scene_node_set_position(surfaceGetNode(movingTopLevel),
+                                    movingTopLevel->posX, movingTopLevel->posY);
         movingTopLevel = NULL;
       }
     }
@@ -239,8 +252,7 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
   if (resizingTopLevel != NULL) {
     resizeTopLevel(resizingTopLevel, coRState, startResizingCursorPosX,
                    startResizingCursorPosY, startResizingWidth,
-                   startResizingHeight, startResizingPosX,
-                   startResizingPosY);
+                   startResizingHeight, startResizingPosX, startResizingPosY);
   }
 
   // -> le déplacement d'un toplevel avec click left + SUPER
@@ -248,7 +260,8 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
     int deltaX = coRState->cursor->x - startMovingPosX;
     int deltaY = coRState->cursor->y - startMovingPosY;
 
-    wlr_scene_node_set_position(surfaceGetNode(movingTopLevel), movingTopLevel->posX + deltaX,
+    wlr_scene_node_set_position(surfaceGetNode(movingTopLevel),
+                                movingTopLevel->posX + deltaX,
                                 movingTopLevel->posY + deltaY);
   }
 
@@ -326,8 +339,8 @@ void resetMovingTopLevel(struct coR_state *coRState) {
 
   // On la remet à sa position initial
   if (movingTopLevel != NULL) {
-    wlr_scene_node_set_position(surfaceGetNode(movingTopLevel), movingTopLevel->posX,
-                                movingTopLevel->posY);
+    wlr_scene_node_set_position(surfaceGetNode(movingTopLevel),
+                                movingTopLevel->posX, movingTopLevel->posY);
     movingTopLevel = NULL;
   }
 }

@@ -10,6 +10,7 @@
 
 // My Lib
 #include "../coRState.h"
+#include "../surfaces/coRSurface.h"
 
 // Structure
 struct coR_pointer_input {
@@ -36,5 +37,8 @@ struct wlr_surface *getSurfaceBelowCursor(struct coR_state *coRState,
 void resetMovingTopLevel(struct coR_state *coRState);
 // Desable the resize
 void resetResizingTopLevel();
+void startResizingSurface(struct coR_state *coRState,
+                          struct coR_surface *newResizingSurface);
+void stopResizingSurface();
 
 #endif

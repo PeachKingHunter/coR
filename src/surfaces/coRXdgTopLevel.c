@@ -295,6 +295,13 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
   int newSizeX = currentSizeX;
   int newPosX = startPosX;
 
+  // Variables for axis Y
+  int deltaY = (int)(coRState->cursor->y) - startCursorPosY;
+  int currentSizeY = resizingTopLevel->sizeY;
+  int currentPosY = resizingTopLevel->posY;
+  int newSizeY = currentSizeY;
+  int newPosY = startPosY;
+
   // get the side to resize
   float threshold = startPosX + startSizeX / 2.;
   int side = startCursorPosX -
@@ -308,7 +315,7 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
     possibleSides--;
   }
 
-  if (startPosX + startSizeX+1 >= box.width + box.x) {
+  if (startPosX + startSizeX + 1 >= box.width + box.x) {
     side = 1;
     possibleSides--;
   }
@@ -320,8 +327,45 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
       newPosX = startPosX + deltaX;
       newSizeX = startSizeX - deltaX;
 
-      // Resize other surfaces
+      // Verif if can resize all other surfaces
       struct coR_surface *tmpCoRSurface;
+      wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
+        // Skip himself
+        if (tmpCoRSurface == resizingTopLevel)
+          continue;
+
+        // Variables
+        int tmpPosX = tmpCoRSurface->posX;
+        int tmpSizeX = tmpCoRSurface->sizeX;
+        int lastNewSizeX = startSizeX - lastDeltaX;
+        int lastNewPosX = startPosX + lastDeltaX;
+
+        // Special case: surface below resizingTopLevel
+        if (abs(tmpPosX - currentPosX) < 20) {
+          int newTmpSize = tmpCoRSurface->sizeX - (newPosX - currentPosX);
+          if (newTmpSize < 50) {
+            stopResizingSurface();
+            return;
+          }
+        }
+
+        // Test colision
+        if ((tmpPosX + tmpSizeX >= newPosX - 2 &&
+             tmpPosX <= newPosX - 2 + newSizeX) ||
+            (tmpPosX + tmpSizeX >= lastNewPosX - 2 &&
+             tmpPosX <= lastNewPosX - 2 + lastNewSizeX)) {
+          if (tmpPosX + tmpSizeX * 8 / 10 <= newPosX + 5) {
+            // Resize
+            int newTmpSize = newPosX - tmpPosX;
+            if (newTmpSize < 50) {
+              stopResizingSurface();
+              return;
+            }
+          }
+        }
+      }
+
+      // Resize other surfaces
       wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
         // Skip himself
         if (tmpCoRSurface == resizingTopLevel)
@@ -350,9 +394,8 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
              tmpPosX <= lastNewPosX - 2 + lastNewSizeX)) {
           if (tmpPosX + tmpSizeX * 8 / 10 < newPosX + 5) {
             // Resize
-            if (surfaceSetSize(tmpCoRSurface, newPosX - tmpPosX,
-                               tmpCoRSurface->sizeY) == -1)
-              return;
+            surfaceSetSize(tmpCoRSurface, newPosX - tmpPosX,
+                           tmpCoRSurface->sizeY);
           }
         }
       }
@@ -362,8 +405,43 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
       // Resize right side
       newSizeX = startSizeX + deltaX;
 
-      // Resize other surfaces
+      // Verif if can resize all other surfaces
+      // C'est horrible, je devrais vraiment changer comment je gère mes fenêtre
+      // car j'en est mare. Je ne le ferait pas pour l'axe Y
       struct coR_surface *tmpCoRSurface;
+      wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
+        // Skip himself
+        if (tmpCoRSurface == resizingTopLevel)
+          continue;
+
+        // Variables
+        int tmpPosX = tmpCoRSurface->posX;
+        int tmpSizeX = tmpCoRSurface->sizeX;
+        int lastNewSizeX = startSizeX + lastDeltaX;
+
+        // Special case: surface on border with it -> Resize
+        if (abs(tmpPosX + tmpSizeX - currentPosX - currentSizeX) < 20) {
+          if (tmpCoRSurface->sizeX + newSizeX - currentSizeX < 33) {
+            stopResizingSurface();
+            return;
+          }
+        }
+
+        // Test colision
+        if ((tmpPosX + tmpSizeX >= newPosX && tmpPosX <= newPosX + newSizeX) ||
+            (tmpPosX + tmpSizeX >= newPosX &&
+             tmpPosX <= newPosX + lastNewSizeX)) {
+          if (newPosX + newSizeX * 8 / 10 < tmpPosX + 5) {
+            // Resize
+            if (tmpPosX + tmpSizeX - newPosX - newSizeX < 33) {
+              stopResizingSurface();
+              return;
+            }
+          }
+        }
+      }
+
+      // Resize other surfaces
       wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
         // Skip himself
         if (tmpCoRSurface == resizingTopLevel)
@@ -406,16 +484,8 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
   // ----
 
   // -- resize in axis Y -- (Copy of axis X)
-  // Variables
-  int deltaY = (int)(coRState->cursor->y) - startCursorPosY;
-  int currentSizeY = resizingTopLevel->sizeY;
-  int currentPosY = resizingTopLevel->posY;
-  int newSizeY = currentSizeY;
-  int newPosY = startPosY;
-
   // get the side to resize
   threshold = startPosY + startSizeY / 2.;
-  // side = startCursorPosY < threshold;
   side = startCursorPosY -
              coRState->workspaces[resizingTopLevel->onWorkspaceNum].posY <
          threshold;
@@ -427,7 +497,7 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
     possibleSides--;
   }
 
-  if (startPosY + startSizeY+1 >= box.height + box.y) {
+  if (startPosY + startSizeY + 1 >= box.height + box.y) {
     side = 1;
     possibleSides--;
   }
@@ -439,8 +509,45 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
       newPosY = startPosY + deltaY;
       newSizeY = startSizeY - deltaY;
 
-      // Resize other surfaces
+      // Verif if can resize all other surfaces
       struct coR_surface *tmpCoRSurface;
+      wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
+        // Skip himself
+        if (tmpCoRSurface == resizingTopLevel)
+          continue;
+
+        // Variables
+        int tmpPosY = tmpCoRSurface->posY;
+        int tmpSizeY = tmpCoRSurface->sizeY;
+        int lastNewSizeY = startSizeY - lastDeltaY;
+        int lastNewPosY = startPosY + lastDeltaY;
+
+        // Special case: surface below resizingTopLevel
+        if (abs(tmpPosY - currentPosY) < 20) {
+          int newTmpSize = tmpCoRSurface->sizeY - (newPosY - currentPosY);
+          if (newTmpSize < 50) {
+            stopResizingSurface();
+            return;
+          }
+        }
+
+        // Test colision
+        if ((tmpPosY + tmpSizeY >= newPosY - 2 &&
+             tmpPosY <= newPosY - 2 + newSizeY) ||
+            (tmpPosY + tmpSizeY >= lastNewPosY - 2 &&
+             tmpPosY <= lastNewPosY - 2 + lastNewSizeY)) {
+          if (tmpPosY + tmpSizeY * 8 / 10 <= newPosY + 5) {
+            // Resize
+            int newTmpSize = newPosY - tmpPosY;
+            if (newTmpSize < 50) {
+              stopResizingSurface();
+              return;
+            }
+          }
+        }
+      }
+
+      // Resize other surfaces
       wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
         // Skip himself
         if (tmpCoRSurface == resizingTopLevel)
@@ -478,8 +585,41 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
       // Resize bottom side
       newSizeY = startSizeY + deltaY;
 
-      // Resize other surfaces
+      // Verif if can resize all other surfaces
       struct coR_surface *tmpCoRSurface;
+      wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
+        // Skip himself
+        if (tmpCoRSurface == resizingTopLevel)
+          continue;
+
+        // Variables
+        int tmpPosY = tmpCoRSurface->posY;
+        int tmpSizeY = tmpCoRSurface->sizeY;
+        int lastNewSizeY = startSizeY + lastDeltaY;
+
+        // Special case: surface on border with it -> Resize
+        if (abs(tmpPosY + tmpSizeY - currentPosY - currentSizeY) < 20) {
+          if (tmpCoRSurface->sizeY + newSizeY - currentSizeY < 33) {
+            stopResizingSurface();
+            return;
+          }
+        }
+
+        // Test colision
+        if ((tmpPosY + tmpSizeY >= newPosY && tmpPosY <= newPosY + newSizeY) ||
+            (tmpPosY + tmpSizeY >= newPosY &&
+             tmpPosY <= newPosY + lastNewSizeY)) {
+          if (newPosY + newSizeY * 8 / 10 < tmpPosY + 5) {
+            // Resize
+            if (tmpPosY + tmpSizeY - newPosY - newSizeY < 33) {
+              stopResizingSurface();
+              return;
+            }
+          }
+        }
+      }
+
+      // Resize other surfaces
       wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
         // Skip himself
         if (tmpCoRSurface == resizingTopLevel)
