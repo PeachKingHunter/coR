@@ -1,9 +1,9 @@
 // My lib
-#include "surfaces/coRLayerSurface.h"
 #include "coROutput.h"
 #include "coRState.h"
-#include "surfaces/coRXdgTopLevel.h"
+#include "surfaces/coRLayerSurface.h"
 #include "surfaces/coRXSurface.h"
+#include "surfaces/coRXdgTopLevel.h"
 
 #include "inputs/coRInputs.h"
 
@@ -36,6 +36,7 @@
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_viewporter.h>
+#include <wlr/types/wlr_xdg_decoration_v1.h>
 
 // wlroot for initialization Pattern
 #include <wayland-server-core.h>
@@ -171,6 +172,18 @@ int main() {
 
   wlr_xwayland_set_seat(xwayland, coRState.seat);
 
+  // 7. Other protocols
+  wlr_cursor_shape_manager_v1_create(display, CURSOR_SHAPE_MANAGER_V1_VERSION);
+  wlr_viewporter_create(display);
+  wlr_fractional_scale_manager_v1_create(display, FRACTIONAL_SCALE_VERSION);
+  wlr_presentation_create(display, backend, PRESENTATION_VERSION);
+  wlr_linux_dmabuf_v1_create_with_renderer(display, LINUX_DMABUF_VERSION,
+                                           coRState.renderer);
+  wlr_data_device_manager_create(coRState.display);
+
+  struct wlr_xdg_decoration_manager_v1 *decoration =
+      wlr_xdg_decoration_manager_v1_create(display);
+
   // 6. Listeners
   coRState.newOutputListener.notify = newOutputHandler;
   wl_signal_add(&backend->events.new_output, &coRState.newOutputListener);
@@ -207,14 +220,9 @@ int main() {
   wl_signal_add(&xwayland->events.new_surface,
                 &coRState.xwaylandNewSurfaceListener);
 
-  // 7. Other protocols
-  wlr_cursor_shape_manager_v1_create(display, CURSOR_SHAPE_MANAGER_V1_VERSION);
-  wlr_viewporter_create(display);
-  wlr_fractional_scale_manager_v1_create(display, FRACTIONAL_SCALE_VERSION);
-  wlr_presentation_create(display, backend, PRESENTATION_VERSION);
-  wlr_linux_dmabuf_v1_create_with_renderer(display, LINUX_DMABUF_VERSION,
-                                           coRState.renderer);
-  wlr_data_device_manager_create(coRState.display);
+  coRState.newDecorationListener.notify = newDecorationHandler;
+  wl_signal_add(&decoration->events.new_toplevel_decoration,
+                &coRState.newDecorationListener);
 
   // 8. Workspaces's structure initialisation
   coRState.focusedWorkspaceNum = 0;
@@ -279,14 +287,15 @@ int main() {
 
 /* TODO:
 - Tablet device input
-- Decoration (disable it)
 - Crash si aucun écran
 - Changer le système de gestion des fenêtre !!
-- Selection de surface avec clavier (décaler le focus sur les surfaces adjacentes)
+- Selection de surface avec clavier (décaler le focus sur les surfaces
+adjacentes)
 - Changer une surface de workspace avec un racourci clavier
 - Ajouter la possibilité de changer la config avec un fichier texte
   | Régler l'ordre des écrans
-  | Direction du scroll 
+  | Direction du scroll
 - Touch device input
+- Decoration -> Créer des bordures de fenêtre
 - Être heureux (｡◕‿‿◕｡)
 */

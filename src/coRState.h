@@ -69,6 +69,8 @@ struct coR_state {
 
   struct wl_listener xwaylandReadyListener;
   struct wl_listener xwaylandNewSurfaceListener;
+
+  struct wl_listener newDecorationListener;
 };
 
 #endif

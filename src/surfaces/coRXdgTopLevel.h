@@ -2,7 +2,6 @@
 #define CoRXdgSurface_H
 #pragma once
 
-
 #include "coRSurface.h"
 
 #include <stddef.h>
@@ -24,6 +23,9 @@ struct coR_xdg_toplevel {
   struct wl_listener destroyListener;
   struct wl_listener commitListener;
   struct wl_listener fullscreenListener;
+
+  // Other
+  struct wlr_xdg_toplevel_decoration_v1 *decoration;
 };
 
 // Methods
@@ -44,4 +46,7 @@ int resizeXOnEmptyArea(int startPosX, int startPosY, int startSizeX,
                        int startSizeY, struct wl_list *xdgTopLevelsList);
 int resizeYOnEmptyArea(int startPosX, int startPosY, int startSizeX,
                        int startSizeY, struct wl_list *xdgTopLevelsList);
+
+void newDecorationHandler(struct wl_listener *listener, void *data);
+
 #endif

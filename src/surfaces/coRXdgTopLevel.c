@@ -5,6 +5,7 @@
 #include "../inputs/coRInputs.h"
 #include "coRSurface.h"
 #include "src/surfaces/coRLayerSurface.h"
+#include "wlr/types/wlr_xdg_decoration_v1.h"
 #include "wlr/util/box.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -94,6 +95,12 @@ static void mapXdgTopLevelHandler(struct wl_listener *listener, void *data) {
   struct wlr_xdg_toplevel *xdgTopLevel = coRXdgTopLevel->coRSurface.surfaceAbs;
   struct wlr_surface *surface = xdgTopLevel->base->surface;
   inputsChangeSurfaceToFocus(coRState, surface, 0, 0);
+
+  if (coRXdgTopLevel->decoration != NULL) {
+    wlr_xdg_toplevel_decoration_v1_set_mode(
+        coRXdgTopLevel->decoration,
+        WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+  }
 }
 
 static void unmapXdgTopLevelHandler(struct wl_listener *listener, void *data) {
@@ -810,4 +817,11 @@ int resizeYOnEmptyArea(int startPosX, int startPosY, int startSizeX,
   }
 
   return sizeChanged;
+}
+
+void newDecorationHandler(struct wl_listener *listener, void *data) {
+  struct wlr_xdg_toplevel_decoration_v1 *decoration = data;
+  struct coR_xdg_toplevel *coRXdgTopLevel =
+      decoration->toplevel->base->surface->data;
+  coRXdgTopLevel->decoration = decoration;
 }
