@@ -10,6 +10,7 @@ executable(
     'src/main.c',
     'src/coRState.c',
     'src/coROutput.c',
+    'src/coRConfigParser.c',
     'src/inputs/coRInputs.c',
     'src/inputs/coRKeyboard.c',
     'src/inputs/coRCursor.c',

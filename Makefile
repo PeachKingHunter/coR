@@ -1,5 +1,5 @@
 run: compile
-	cd forInstall; ./coR
+	./forInstall/coR
 
 compile:
 	cd build; meson compile

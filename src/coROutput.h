@@ -13,10 +13,17 @@
 
 // Struture
 struct coR_output {
+  struct wl_list link;
+
   // Components
   struct wlr_output *output;
   struct coR_state *coRState;
   struct wlr_scene_output *sceneOutput;
+
+  // Proprieties
+  char *name;
+  int posX;
+  int posY;
 
   // Listeners
   struct wl_listener frameListener;

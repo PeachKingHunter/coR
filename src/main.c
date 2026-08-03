@@ -1,4 +1,5 @@
 // My lib
+#include "coRConfigParser.h"
 #include "coROutput.h"
 #include "coRState.h"
 #include "surfaces/coRLayerSurface.h"
@@ -247,6 +248,8 @@ int main() {
     wlr_scene_node_set_position(&workspace->rootNode->node, workspace->posX,
                                 workspace->posY);
   }
+  // outputs list
+  wl_list_init(&coRState.outputs);
 
   // 9. Backend & Socket for get apps
   const char *socket = wl_display_add_socket_auto(coRState.display);
@@ -254,17 +257,14 @@ int main() {
     exit(1);
   }
 
-  wlr_backend_start(backend);
-
-  // Teste open app
+  // Environement variable
   setenv("WAYLAND_DISPLAY", socket, true);
-  if (fork() == 0)
-    execlp("quickshell", "quickshell", NULL);
-  if (fork() == 0)
-    execlp("wpaperd", "wpaperd", NULL);
-  if (fork() == 0)
-    execlp("kitty", "kitty", NULL);
   wlr_log(WLR_INFO, "Running Wayland compositor on WAYLAND_DISPLAY=%s", socket);
+
+  // Execute the configuration
+  runConfig(&coRState);
+
+  wlr_backend_start(backend);
 
   // 10. Launch the compositor
   wl_display_run(display);
@@ -291,18 +291,18 @@ int main() {
 }
 
 /* TODO:
-- Tablet device input
-- Crash si aucun écran
-- Changer le système de gestion des fenêtre !!
+- Ajouter la possibilité de changer la config avec un fichier texte
+  | Direction du scroll
+  | Raccourci PERSONALISER pour ouvrir une app, Resize, move
+- Changer une surface de workspace avec un racourci clavier
 - Selection de surface avec clavier (décaler le focus sur les surfaces
 adjacentes)
-- Changer une surface de workspace avec un racourci clavier
-- Ajouter la possibilité de changer la config avec un fichier texte
-  | Régler l'ordre des écrans
-  | Direction du scroll
-- Touch device input
+- Crash si aucun écran
+- Changer le système de gestion des fenêtre !!
 - Decoration -> Créer des bordures de fenêtre
-- Should have the tablet implementation (pressure,...) in addition for
-application that recognize it. And the tablet pad and other button on it
+- Tablet device input: Should have the tablet implementation (pressure,...) in
+addition for application that recognize it. And the tablet pad and other button
+on it
+- Touch device input
 - Être heureux (｡◕‿‿◕｡)
 */

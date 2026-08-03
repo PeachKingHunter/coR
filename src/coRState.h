@@ -29,14 +29,11 @@ struct coR_state {
   // struct wl_event_loop *eventLoop;
   struct wlr_backend *backend;
 
-  // For surfaces
+  // Surfaces
   struct wlr_compositor *compositor;
   struct wlr_scene *scene;
   struct wlr_scene_output_layout *sceneLayout;
   struct wl_list docks; // All layerSurface docked on border (3 border)
-
-  // Workspaces
-  struct coR_workspace workspaces[NB_WORKSPACE];
 
   // Focus
   struct wlr_surface *focusedSurface;
@@ -44,11 +41,11 @@ struct coR_state {
   struct wlr_output *focusedOutput;
   int focusedWorkspaceNum;
 
-  // Components for render outputs
-  struct wlr_renderer *renderer;
-  struct wlr_allocator *allocator;
+  // Workspaces & Outputs
+  struct coR_workspace workspaces[NB_WORKSPACE];
+  struct wl_list outputs;
 
-  // For lib input of wlr
+  // Inputs
   struct wlr_session *session;
   struct wlr_seat *seat; // For peripherics
 
@@ -57,6 +54,10 @@ struct coR_state {
   struct wlr_output_layout *outputLayout;
 
   struct wlr_tablet_manager_v2 *tabletManager;
+
+  // Components for render
+  struct wlr_renderer *renderer;
+  struct wlr_allocator *allocator;
 
   // Listeners
   struct wl_listener newOutputListener;

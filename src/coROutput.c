@@ -1,4 +1,7 @@
 #include "coROutput.h"
+#include <stdio.h>
+#include <string.h>
+#include <wayland-util.h>
 
 void outputFrameHandler(struct wl_listener *listener, void *data) {
   // printf("-> Render frame of an output\n");
@@ -37,6 +40,7 @@ void outputDestroyHandler(struct wl_listener *listener, void *data) {
   wl_list_remove(&coROutput->destroyListener.link);
 
   // 2.
+  wl_list_remove(&coROutput->link);
   free(coROutput);
   printf("<- remove an output\n");
 }
@@ -59,13 +63,39 @@ void newOutputHandler(struct wl_listener *listener, void *data) {
   // 0.
   wlr_output_init_render(output, coRState->allocator, coRState->renderer);
 
-  // 1.
-  struct coR_output *coROutput = malloc(sizeof(struct coR_output));
-  if (!coROutput)
-    return;
+  // 1
+  bool preConfigured = false;
+  char *outputName = output->name;
+  struct coR_output *coROutput = NULL;
 
-  coROutput->output = output;
+  printf("%s\n", outputName);
+  // Verifie si elle existe deja
+  struct coR_output *tmpCoROutput;
+  wl_list_for_each(tmpCoROutput, &coRState->outputs, link) {
+    if (tmpCoROutput->output != NULL)
+      continue;
+
+    printf("test %s\n", tmpCoROutput->name);
+    if (strcmp(tmpCoROutput->name, outputName) == 0) {
+      coROutput = tmpCoROutput;
+      preConfigured = true;
+      break;
+    }
+  }
+
+  // En creer une nouvelle
+  if (coROutput == NULL) {
+    coROutput = calloc(1, sizeof(struct coR_output));
+    if (!coROutput)
+      return;
+
+    coROutput->name = strdup(outputName);
+
+    wl_list_insert(&coRState->outputs, &coROutput->link);
+  }
+
   coROutput->coRState = coRState;
+  coROutput->output = output;
   output->data = coROutput;
 
   // 2.
@@ -88,9 +118,20 @@ void newOutputHandler(struct wl_listener *listener, void *data) {
   wlr_output_state_finish(&state);
 
   // 4. Layout for multiscreen, scale and other
-  // wlr_output_layout_add(coRState->outputLayout, output, 0, 0);
-  struct wlr_output_layout_output *outputLayoutOutput =
-      wlr_output_layout_add_auto(coRState->outputLayout, output);
+  struct wlr_output_layout_output *outputLayoutOutput;
+  if (preConfigured == true) {
+    outputLayoutOutput = wlr_output_layout_add(
+        coRState->outputLayout, output, coROutput->posX, coROutput->posY);
+
+  } else {
+    outputLayoutOutput =
+        wlr_output_layout_add_auto(coRState->outputLayout, output);
+    coROutput->posX = outputLayoutOutput->x;
+    coROutput->posY = outputLayoutOutput->y;
+  }
+  printf("Output -> posX: %d,  posY: %d\n", outputLayoutOutput->x,
+         outputLayoutOutput->y);
+
   struct wlr_scene_output *sceneOutput =
       wlr_scene_output_create(coRState->scene, output);
   coROutput->sceneOutput = sceneOutput;
