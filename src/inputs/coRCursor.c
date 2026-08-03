@@ -4,6 +4,7 @@
 #include "src/coRState.h"
 #include "src/surfaces/coRSurface.h"
 #include <stddef.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <wayland-util.h>
 #include <wlr/types/wlr_cursor.h>
@@ -200,6 +201,7 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
   }
 
   // Envoie au client le clique
+  // printf("%d\n",  event->button);
   wlr_seat_pointer_notify_button(coRState->seat, event->time_msec,
                                  event->button, event->state);
   wlr_seat_pointer_notify_frame(coRState->seat);

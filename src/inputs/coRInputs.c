@@ -1,8 +1,10 @@
 #include "coRInputs.h"
 #include "coRKeyboard.h"
+#include "coRTablet.h"
 #include "src/coRState.h"
 #include <stdbool.h>
 #include <stdio.h>
+#include <wayland-server-core.h>
 #include <wayland-server-protocol.h>
 #include <wayland-util.h>
 
@@ -92,8 +94,40 @@ void newInputHandler(struct wl_listener *listener, void *data) {
   case WLR_INPUT_DEVICE_TOUCH:
     break;
   case WLR_INPUT_DEVICE_TABLET:
+    printf("tablet detected\n");
+    // Structure coR_tablet_input
+    struct coR_tablet_input *coRTabletI =
+        calloc(1, sizeof(struct coR_tablet_input));
+    coRTabletI->inputDevice = inputDevice;
+    coRTabletI->coRState = coRState;
+
+    // Cursor attach
+    wlr_cursor_attach_input_device(coRState->cursor, inputDevice);
+
+    // create tablet
+    struct wlr_tablet_v2_tablet *tablet =
+        wlr_tablet_create(coRState->tabletManager, coRState->seat, inputDevice);
+    coRTabletI->tablet = tablet;
+
+    // Listeners
+    coRTabletI->axisListener.notify = axisTabletHandler;
+    wl_signal_add(&coRTabletI->tablet->wlr_tablet->events.axis,
+                  &coRTabletI->axisListener);
+    coRTabletI->proximityListener.notify = proximityTabletHandler;
+    wl_signal_add(&coRTabletI->tablet->wlr_tablet->events.proximity,
+                  &coRTabletI->proximityListener);
+    coRTabletI->buttonListener.notify = buttonTabletHandler;
+    wl_signal_add(&coRTabletI->tablet->wlr_tablet->events.button,
+                  &coRTabletI->buttonListener);
+    coRTabletI->tipListener.notify = tipTabletHandler;
+    wl_signal_add(&coRTabletI->tablet->wlr_tablet->events.tip,
+                  &coRTabletI->tipListener);
     break;
   case WLR_INPUT_DEVICE_TABLET_PAD:
+    printf("tablet's pad detected\n");
+    // struct wlr_tablet_v2_tablet_pad *tabletPad = wlr_tablet_pad_create(
+    //     coRState->tabletManager, coRState->seat, inputDevice);
+
     break;
   case WLR_INPUT_DEVICE_SWITCH:
     break;

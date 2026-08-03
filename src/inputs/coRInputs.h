@@ -5,6 +5,9 @@
 // Wlroot
 #include <wlr/types/wlr_cursor.h>
 #include "wlr/backend/libinput.h"
+#include <wlr/types/wlr_tablet_v2.h>
+#include <wlr/types/wlr_tablet_tool.h>
+#include <wlr/types/wlr_tablet_pad.h>
 
 // My Lib
 #include "../coRState.h"

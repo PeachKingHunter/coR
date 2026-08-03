@@ -13,6 +13,7 @@ executable(
     'src/inputs/coRInputs.c',
     'src/inputs/coRKeyboard.c',
     'src/inputs/coRCursor.c',
+    'src/inputs/coRTablet.c',
     'src/surfaces/coRXdgTopLevel.c',
     'src/surfaces/coRLayerSurface.c',
     'src/surfaces/coRXSurface.c',

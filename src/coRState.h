@@ -56,6 +56,8 @@ struct coR_state {
   struct wlr_scene_rect *cursorScene;
   struct wlr_output_layout *outputLayout;
 
+  struct wlr_tablet_manager_v2 *tabletManager;
+
   // Listeners
   struct wl_listener newOutputListener;
   struct wl_listener newXdgTopLevelListener;

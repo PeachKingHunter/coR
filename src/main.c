@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_seat.h>
+#include <wlr/types/wlr_tablet_v2.h>
 
 // Rendering
 #include <wayland-server-protocol.h>
@@ -104,6 +105,10 @@ int main() {
   //  Set capabilities
   wlr_seat_set_capabilities(coRState.seat, WL_SEAT_CAPABILITY_KEYBOARD |
                                                WL_SEAT_CAPABILITY_POINTER);
+
+  // Tablet
+  coRState.tabletManager = wlr_tablet_v2_create(display);
+
   //  3.1 Curseur
   coRState.cursor = wlr_cursor_create();
   coRState.outputLayout = wlr_output_layout_create(display);
@@ -297,5 +302,7 @@ adjacentes)
   | Direction du scroll
 - Touch device input
 - Decoration -> Créer des bordures de fenêtre
+- Should have the tablet implementation (pressure,...) in addition for
+application that recognize it. And the tablet pad and other button on it
 - Être heureux (｡◕‿‿◕｡)
 */
