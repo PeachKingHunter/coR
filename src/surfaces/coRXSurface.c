@@ -2,6 +2,7 @@
 
 #include "../inputs/coRCursor.h"
 #include "../inputs/coRInputs.h"
+#include "coRSurface.h"
 #include "coRXdgTopLevel.h"
 #include <wayland-util.h>
 
@@ -24,6 +25,15 @@ void xwaylandUnMapHandler(struct wl_listener *listener, void *data) {
 
   struct coR_xsurface *coRXSurface =
       wl_container_of(listener, coRXSurface, unMapListener);
+
+  // Remove the focus if own it
+  if (coRXSurface->coRSurface.coRState->focusedSurface == surfaceGetSurface(&coRXSurface->coRSurface)) {
+    coRXSurface->coRSurface.coRState->focusedSurface = NULL;
+    coRXSurface->coRSurface.coRState->focusedCoRSurface = NULL;
+
+    wlr_seat_keyboard_clear_focus(coRXSurface->coRSurface.coRState->seat);
+    wlr_seat_pointer_clear_focus(coRXSurface->coRSurface.coRState->seat);
+  }
 }
 
 // ----------------

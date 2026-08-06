@@ -1,8 +1,15 @@
 #include "coRKeyboard.h"
+#include "src/coRConfigParser.h"
+#include "src/coRState.h"
 #include "src/surfaces/coRSurface.h"
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include <wayland-server-protocol.h>
 #include <wayland-util.h>
+#include <xkbcommon/xkbcommon.h>
 
 extern int superPressed;
 
@@ -15,50 +22,94 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
       wl_container_of(listener, coRKeyboardI, keyListener);
   struct wlr_keyboard_key_event *event = data;
   struct coR_state *coRState = coRKeyboardI->coRState;
-  printf("Touche: %d\n", event->keycode);
 
-  // Raccourci spéciaux
-  if (superPressed == true && event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-    if (surfaceIsFullScreen(coRState->focusedCoRSurface) != 1) {
-      // touche M -> Close compositor
-      if (event->keycode == 39) {
+  // Convert key
+  char keyStr[17];
+  struct wlr_keyboard *keyboard =
+      wlr_keyboard_from_input_device(coRKeyboardI->inputDevice);
+  xkb_keysym_t keySym = xkb_state_key_get_one_sym(
+      keyboard->xkb_state, event->keycode + 8);        // Get key sym
+  xkb_keysym_get_name(keySym, keyStr, sizeof(keyStr)); // Key in full character
+
+  // Print it for debug
+  printf("Touche: %d -> %u, %s\n", event->keycode, keySym, keyStr);
+
+  // key pressed in array
+  // printf("key state: %d\n", isKeyPressed(coRKeyboardI, event->keycode));
+  keySetPress(coRKeyboardI, keySym,
+              event->state == WL_KEYBOARD_KEY_STATE_PRESSED);
+  // printf("key state: %d\n", isKeyPressed(coRKeyboardI, event->keycode));
+
+  // Try all commands
+  struct keyCommand *command;
+  wl_list_for_each(command, &coRState->commands, link) {
+    uint8_t allKeysOk = 1;
+    for (int i = 0; i < command->nbKeys; i++) {
+      if (!isKeyPressed(coRKeyboardI, command->keys[i])) {
+        allKeysOk = 0;
+        // printf("NOP\n");
+        break;
+      }
+    }
+
+    if (allKeysOk == 0)
+      continue;
+
+    printf("command Ok\n");
+
+    // Action from the compositor
+    if (strcmp(command->command[0], "compositorAction") == 0) {
+      printf("compositorAction\n");
+      printf("%50s\n", command->command[0]);
+      printf("%50s\n", command->command[1]);
+
+      // Fullscreen
+      if (strcmp(command->command[1], "fullscreen") == 0) {
+        surfaceChangeFullscreen(coRState, coRState->focusedCoRSurface);
+        return;
+      }
+
+      // Close compositor
+      if (strcmp(command->command[1], "exit") == 0) {
         exit(1);
         return;
       }
 
-      // touche Q -> Open Terminal
-      if (event->keycode == 30) {
-        if (fork() == 0) {
-          // execlp("weston-terminal", "weston-terminal", NULL);
-          execlp("kitty", "kitty", NULL);
-        }
-        return;
+      printf("Before\n");
+      // Below are action not able in fullscreen
+      if (surfaceIsFullScreen(coRState->focusedCoRSurface) == 1) {
+        continue;
       }
+      printf("After\n");
 
-      // touche R -> Open rofi
-      if (event->keycode == 19) {
-        if (fork() == 0) {
-          // execlp("weston-terminal", "weston-terminal", NULL);
-          execlp("rofi", "rofi", "-show", "drun", "-disable-history",
-                 "-show-icons", "-config",
-                 "~/.config/rofi/app-launcher.rasi", NULL);
-        }
-        return;
-      }
-
-      // touche C -> Close focused application
-      if (event->keycode == 46) {
+      // Close focused application
+      if (strcmp(command->command[1], "killFocused") == 0) {
+        printf("killFocused\n");
         if (coRState->focusedCoRSurface != NULL) {
           wlr_xdg_toplevel_send_close(
               ((struct coR_surface *)coRState->focusedCoRSurface)->surfaceAbs);
         }
         return;
       }
+
+      continue;
     }
 
-    // touche f -> Fullscreen
-    if (event->keycode == 33) {
-      surfaceChangeFullscreen(coRState, coRState->focusedCoRSurface);
+    // Application
+    else if (fork() == 0) {
+      printf("newApp\n");
+
+      execvp(command->command[0], command->command);
+      perror("execvp");
+      exit(1);
+    }
+  }
+
+  // Raccourci spéciaux
+  if (superPressed == true && event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+
+    // Below are action not able in fullscreen
+    if (surfaceIsFullScreen(coRState->focusedCoRSurface) == 1) {
       return;
     }
 
@@ -134,4 +185,30 @@ void modifierKeyboardHandler(struct wl_listener *listener, void *data) {
   // Send new modifier to the seat
   wlr_seat_keyboard_notify_modifiers(coRKeyboardI->coRState->seat,
                                      &keyboard->modifiers);
+}
+
+uint8_t isKeyPressed(struct coR_keyboard_input *coRKeyboardI,
+                     uint32_t keyCode) {
+  if (keyCode >= MAX_KEYS_SYM)
+    return 0;
+
+  int arrayIndex = keyCode / 32;
+  int bitInSlot = (keyCode / 32.f - arrayIndex) * 32;
+
+  return (coRKeyboardI->pressedKeys[arrayIndex] & (1 << bitInSlot)) != 0;
+}
+
+void keySetPress(struct coR_keyboard_input *coRKeyboardI, uint32_t keyCode,
+                 int isPressed) {
+  if (keyCode >= MAX_KEYS_SYM)
+    return;
+
+  int arrayIndex = keyCode / 32;
+  int bitInSlot = (keyCode / 32.f - arrayIndex) * 32;
+
+  if (isPressed == 1) {
+    coRKeyboardI->pressedKeys[arrayIndex] |= (1 << bitInSlot);
+  } else {
+    coRKeyboardI->pressedKeys[arrayIndex] &= ~(1 << bitInSlot);
+  }
 }

@@ -45,6 +45,9 @@ struct coR_state {
   struct coR_workspace workspaces[NB_WORKSPACE];
   struct wl_list outputs;
 
+  // Settings
+  struct wl_list commands;
+
   // Inputs
   struct wlr_session *session;
   struct wlr_seat *seat; // For peripherics

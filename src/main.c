@@ -261,7 +261,9 @@ int main() {
   setenv("WAYLAND_DISPLAY", socket, true);
   wlr_log(WLR_INFO, "Running Wayland compositor on WAYLAND_DISPLAY=%s", socket);
 
-  // Execute the configuration
+  // User configuration
+  wl_list_init(&coRState.commands);
+
   runConfig(&coRState);
 
   wlr_backend_start(backend);
