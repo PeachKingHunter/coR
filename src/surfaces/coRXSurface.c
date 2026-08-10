@@ -146,6 +146,7 @@ void xwaylandDissociateHandler(struct wl_listener *listener, void *data) {
     0. Resize, Reposition les surfaces
     1. Retirer de la liste dans struct coR_state
     2. Retire les listeners de leur listes
+    3. Remove the focus if own it
   */
 
   // Variables
@@ -196,6 +197,16 @@ endResizeInDissociateFunc:
   wl_list_remove(&coRXSurface->commitListener.link);
   wl_list_remove(&coRXSurface->mapListener.link);
   wl_list_remove(&coRXSurface->unMapListener.link);
+
+  // 3. Remove the focus if own it
+  printf("3.\n");
+  if (coRXSurface->coRSurface.coRState->focusedSurface == surfaceGetSurface(&coRXSurface->coRSurface)) {
+    coRXSurface->coRSurface.coRState->focusedSurface = NULL;
+    coRXSurface->coRSurface.coRState->focusedCoRSurface = NULL;
+
+    wlr_seat_keyboard_clear_focus(coRXSurface->coRSurface.coRState->seat);
+    wlr_seat_pointer_clear_focus(coRXSurface->coRSurface.coRState->seat);
+  }
 }
 
 static void xwaylandFullscreenHandler(struct wl_listener *listener,

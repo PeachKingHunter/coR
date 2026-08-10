@@ -21,6 +21,16 @@ struct keyCommand {
   struct wl_list link;
 };
 
+struct keyWorkspace {
+  xkb_keysym_t *keys;
+  int workspace;
+  
+  int nbKeys;
+  int action;
+
+  struct wl_list link;
+};
+
 // Methods
 void runConfig(struct coR_state *coRState);
 

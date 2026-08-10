@@ -86,8 +86,12 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
       if (strcmp(command->command[1], "killFocused") == 0) {
         printf("killFocused\n");
         if (coRState->focusedCoRSurface != NULL) {
-          wlr_xdg_toplevel_send_close(
-              ((struct coR_surface *)coRState->focusedCoRSurface)->surfaceAbs);
+          struct coR_surface *coRSurface =
+              ((struct coR_surface *)coRState->focusedCoRSurface);
+          if (coRSurface->type == TYPE_XDG_TOPLEVEL)
+            wlr_xdg_toplevel_send_close(coRSurface->surfaceAbs);
+          else if (coRSurface->type == TYPE_XSURFACE)
+            wlr_xwayland_surface_close(coRSurface->surfaceAbs);
         }
         return;
       }

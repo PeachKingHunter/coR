@@ -14,6 +14,9 @@ createBuildDir:
 install: compile
 	sudo cp forInstall/coR.desktop /usr/share/wayland-sessions;
 	sudo cp forInstall/coR /usr/bin/
+	mkdir -p $$HOME/.config/coR/
+	cp ./tmpConfig.conf $$HOME/.config/coR/main.conf
+
 
 
 # Chercher le nom du package

@@ -58,7 +58,7 @@
 
 int main() {
   // More logs
-  wlr_log_init(WLR_DEBUG, NULL);
+  // wlr_log_init(WLR_DEBUG, NULL);
 
   /* Initialization Pattern
   0.Structure for server's components, listeners
@@ -263,6 +263,7 @@ int main() {
 
   // User configuration
   wl_list_init(&coRState.commands);
+  coRState.scrollPower = 1;
 
   runConfig(&coRState);
 
@@ -293,9 +294,10 @@ int main() {
 }
 
 /* TODO:
+- La tablette ne bouge pas le curseur en temps réel
 - Ajouter la possibilité de changer la config avec un fichier texte
-  | Direction du scroll
-  | Raccourci PERSONALISER pour ouvrir une app, Resize, move
+  | Raccourci PERSONALISER pour Resize, move
+- LayerSurface in Background no focus ?? LayerSurface request focus ??
 - Changer une surface de workspace avec un racourci clavier
 - Selection de surface avec clavier (décaler le focus sur les surfaces
 adjacentes)

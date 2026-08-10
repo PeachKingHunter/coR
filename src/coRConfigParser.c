@@ -7,7 +7,8 @@
 #include <wayland-util.h>
 #include <xkbcommon/xkbcommon.h>
 
-#define CONFIG_FILE "tmpConfig.conf"
+#define CONFIG_FOLDER ".config/coR/"
+#define CONFIG_FILE "main.conf"
 
 void skipUselessWord(char **splittedStr) {
   if (splittedStr == NULL)
@@ -25,7 +26,26 @@ void skipUselessWord(char **splittedStr) {
 
 void runConfig(struct coR_state *coRState) {
   // Open the main config file
-  FILE *file = fopen(CONFIG_FILE, "r");
+  // For temp config
+  //   FILE *file = fopen(CONFIG_FILE, "r");
+  //   if (file == NULL)
+  //     return;
+
+  char path[500];
+  path[0] = '\0';
+
+  // Get user home
+  char *homePath = getenv("HOME");
+  if (homePath == NULL)
+    return;
+
+  strcat(path, homePath);
+  strcat(path, "/");
+  strcat(path, CONFIG_FOLDER);
+  strcat(path, CONFIG_FILE);
+
+  printf("%400s\n", path);
+  FILE *file = fopen(path, "r");
   if (file == NULL)
     return;
 
@@ -90,6 +110,28 @@ void runConfig(struct coR_state *coRState) {
         execlp(splittedStr, splittedStr, NULL);
         exit(1);
       }
+    }
+
+    // Scroll Direction
+    else if (strcmp(splittedStr, "scroll") == 0) {
+      splittedStr = strtok(NULL, " ");
+      skipUselessWord(&splittedStr);
+      if (splittedStr == NULL)
+        continue;
+
+      for (int i = 0; i < strlen(splittedStr); i++)
+        if (splittedStr[i] == '\n')
+          splittedStr[i] = '\0';
+
+      printf("%15s\n", splittedStr);
+      if (strcmp(splittedStr, "inverse") == 0) {
+        if (coRState->scrollPower > 0)
+          coRState->scrollPower *= -1;
+      } else {
+        if (coRState->scrollPower < 0)
+          coRState->scrollPower *= -1;
+      }
+      printf("%d\n", coRState->scrollPower);
     }
 
     // Start application / command with keys
@@ -159,7 +201,7 @@ void runConfig(struct coR_state *coRState) {
           if (splittedStr[j] == '\n')
             splittedStr[j] = '\0';
         command->command[1] = strdup(splittedStr);
-        printf("%50s\n",splittedStr);
+        printf("%50s\n", splittedStr);
         wl_list_insert(&coRState->commands, &command->link);
         continue;
       }

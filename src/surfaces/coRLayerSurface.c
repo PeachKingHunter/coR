@@ -128,6 +128,7 @@ void mapLayerSurfaceHandler(struct wl_listener *listener, void *data) {
   struct wlr_layer_surface_v1 *layerSurface = coRLayerSurface->layerSurface;
 
   // get focus
+  coRState->focusedSurface = coRLayerSurface->layerSurface->surface;
   inputsChangeSurfaceToFocus(coRState, layerSurface->surface, 0, 0);
 }
 

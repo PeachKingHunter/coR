@@ -47,6 +47,7 @@ struct coR_state {
 
   // Settings
   struct wl_list commands;
+  int scrollPower;
 
   // Inputs
   struct wlr_session *session;

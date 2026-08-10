@@ -292,19 +292,36 @@ void cursorMotionAbsoluteHandler(struct wl_listener *listener, void *data) {
 }
 
 void cursorAxisHandler(struct wl_listener *listener, void *data) {
-  // printf("-> cursorAxisHandler\n");
-
-  // Variables
   struct coR_state *coRState =
       wl_container_of(listener, coRState, cursorAxisListener);
   struct wlr_pointer_axis_event *event = data;
 
-  // Envoie au client
+  // Inverse la direction du scroll
+  double invertedDelta = coRState->scrollPower * event->delta;
+  int invertedDeltaDiscrete = coRState->scrollPower * event->delta_discrete;
+
   wlr_seat_pointer_notify_axis(
-      coRState->seat, event->time_msec, event->orientation, event->delta,
-      event->delta_discrete, event->source, -event->relative_direction);
+      coRState->seat, event->time_msec, event->orientation,
+      invertedDelta, invertedDeltaDiscrete,
+      event->source, event->relative_direction);
   wlr_seat_pointer_notify_frame(coRState->seat);
 }
+
+//
+// void cursorAxisHandler(struct wl_listener *listener, void *data) {
+//   // printf("-> cursorAxisHandler\n");
+//
+//   // Variables
+//   struct coR_state *coRState =
+//       wl_container_of(listener, coRState, cursorAxisListener);
+//   struct wlr_pointer_axis_event *event = data;
+//
+//   // Envoie au client
+//   wlr_seat_pointer_notify_axis(
+//       coRState->seat, event->time_msec, event->orientation, event->delta,
+//       event->delta_discrete, event->source, event->relative_direction);
+//   wlr_seat_pointer_notify_frame(coRState->seat);
+// }
 
 struct wlr_surface *getSurfaceBelowCursor(struct coR_state *coRState,
                                           double *sX, double *sY) {
