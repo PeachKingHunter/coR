@@ -24,6 +24,9 @@ struct coR_surface {
   struct coR_state *coRState;
   int onWorkspaceNum;
 
+  // Decoration
+  struct wlr_scene_rect *decoration[4];
+
   // Placement
   int posX, posY;
   float sizeX, sizeY;

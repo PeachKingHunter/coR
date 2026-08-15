@@ -294,7 +294,6 @@ int main() {
 }
 
 /* TODO:
-- La tablette ne bouge pas le curseur en temps réel
 - Decoration -> Créer des bordures de fenêtre
 - Ajouter la possibilité de changer la config avec un fichier texte
   | Raccourci PERSONALISER pour Resize, move

@@ -27,7 +27,8 @@ void axisTabletHandler(struct wl_listener *listener, void *data) {
   // printf("x:%fl\n", event->tablet->width_mm);
   // printf("y:%fl\n", event->tablet->height_mm);
   double lx, ly;
-  wlr_cursor_absolute_to_layout_coords(coRState->cursor, coRTabletI->inputDevice, event->x, event->y, &lx, &ly);
+  wlr_cursor_absolute_to_layout_coords(
+      coRState->cursor, coRTabletI->inputDevice, event->x, event->y, &lx, &ly);
 
   if (event->updated_axes & WLR_TABLET_TOOL_AXIS_X)
     wlr_cursor_warp(coRState->cursor, coRTabletI->inputDevice, lx,
@@ -63,6 +64,8 @@ void axisTabletHandler(struct wl_listener *listener, void *data) {
   // if (event->tool->distance)
   //   wlr_tablet_v2_tablet_tool_notify_distance(coRTabletI->tabletToolV2,
   //                                             event->distance);
+
+  wlr_seat_pointer_notify_frame(coRState->seat);
 }
 
 void proximityTabletHandler(struct wl_listener *listener, void *data) {

@@ -44,8 +44,8 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
 */
 int resizeXOnEmptyArea(int startPosX, int startPosY, float startSizeX,
                        float startSizeY, struct wl_list *xdgTopLevelsList);
-int resizeYOnEmptyArea(int startPosX, int startPosY, int startSizeX,
-                       int startSizeY, struct wl_list *xdgTopLevelsList);
+int resizeYOnEmptyArea(int startPosX, int startPosY, float startSizeX,
+                       float startSizeY, struct wl_list *xdgTopLevelsList);
 
 void newDecorationHandler(struct wl_listener *listener, void *data);
 

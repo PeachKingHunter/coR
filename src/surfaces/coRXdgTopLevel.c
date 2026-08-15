@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <wayland-util.h>
 
+#define EPSILON 2
+
 static void commitXdgTopLevelHandler(struct wl_listener *listener, void *data) {
   // printf("-> commitXdgTopLevelHandler\n");
   // Variables
@@ -78,12 +80,6 @@ static void commitXdgTopLevelHandler(struct wl_listener *listener, void *data) {
   surfaceSetPos(coRSurface, box.x, box.y);
   surfaceSetSize(coRSurface, box.width, box.height);
   wl_list_insert(&workspace->xdgTopLevels, &coRSurface->link);
-
-  // // Take the entire screen (exept docks
-  // surfaceSetPos(coRSurface, 0, 0);
-  // surfaceSetSize(coRSurface, workspace->currentOutput->width,
-  //                workspace->currentOutput->height);
-  // wl_list_insert(&workspace->xdgTopLevels, &coRSurface->link);
 }
 
 static void mapXdgTopLevelHandler(struct wl_listener *listener, void *data) {
@@ -207,7 +203,8 @@ void newXdgTopLevelHandler(struct wl_listener *listener, void *data) {
     1.Structure de donnée
     2.Stockage (liste) -> Pas ici mais dans map
     3.Scene for position management
-    4.Listeners
+    4.Decoration
+    5.Listeners
   */
 
   // Variables
@@ -244,6 +241,31 @@ void newXdgTopLevelHandler(struct wl_listener *listener, void *data) {
   printf("-> TopLevel saved\n");
 
   // 4.
+  float color[4] = {0.8, 0.8, 0.8, 1};
+
+  // Top border
+  coRSurface->decoration[0] =
+      wlr_scene_rect_create(topLevelSceneTree, coRSurface->sizeX, 2, color);
+  wlr_scene_node_set_position(&coRSurface->decoration[0]->node, 0, 0);
+
+  // Left border
+  coRSurface->decoration[1] =
+      wlr_scene_rect_create(topLevelSceneTree, 2, coRSurface->sizeY, color);
+  wlr_scene_node_set_position(&coRSurface->decoration[1]->node, 0, 0);
+
+  // Down border
+  coRSurface->decoration[2] =
+      wlr_scene_rect_create(topLevelSceneTree, coRSurface->sizeX, 2, color);
+  wlr_scene_node_set_position(&coRSurface->decoration[2]->node, 0,
+                              coRSurface->sizeY - 2);
+
+  // Right border
+  coRSurface->decoration[3] =
+      wlr_scene_rect_create(topLevelSceneTree, 2, coRSurface->sizeY, color);
+  wlr_scene_node_set_position(&coRSurface->decoration[3]->node,
+                              coRSurface->sizeX - 2, 0);
+
+  // 5.
   coRXdgTopLevel->mapListener.notify = mapXdgTopLevelHandler;
   wl_signal_add(&xdgTopLevel->base->surface->events.map,
                 &coRXdgTopLevel->mapListener);
@@ -312,12 +334,12 @@ void resizeTopLevelX(struct coR_surface *resizingTopLevel,
   int possibleSides = 2;
 
   // No resize sides glued to output's border
-  if (startPosX <= box.x) {
+  if (startPosX <= box.x + EPSILON) {
     side = 0;
     possibleSides--;
   }
 
-  if (startPosX + startSizeX + 1 >= box.width + box.x) {
+  if (startPosX + startSizeX + EPSILON >= box.width + box.x) {
     side = 1;
     possibleSides--;
   }
@@ -342,15 +364,11 @@ void resizeTopLevelX(struct coR_surface *resizingTopLevel,
     return;
 
   // No resize sides glued to output's border
-  if (startPosX > box.x) {
-    if (newPosX <= box.x) {
-      return;
-    }
+  if (newPosX < box.x - EPSILON / 2.) {
+    return;
   }
-  if (startPosX + startSizeX < box.width + box.x) {
-    if (newPosX + newSizeX >= box.width + box.x) {
-      return;
-    }
+  if (newPosX + newSizeX > box.width + box.x + EPSILON / 2.) {
+    return;
   }
 
   // Resize with the perfect side
@@ -512,12 +530,12 @@ void resizeTopLevelY(struct coR_surface *resizingTopLevel,
   int possibleSides = 2;
 
   // No resize sides glued to output's border
-  if (startPosY <= box.y) {
+  if (startPosY <= box.y + EPSILON) {
     side = 0;
     possibleSides--;
   }
 
-  if (startPosY + startSizeY + 1 >= box.height + box.y) {
+  if (startPosY + startSizeY + EPSILON >= box.height + box.y) {
     side = 1;
     possibleSides--;
   }
@@ -542,15 +560,11 @@ void resizeTopLevelY(struct coR_surface *resizingTopLevel,
     return;
 
   // No resize sides glued to output's border
-  if (startPosY > box.y) {
-    if (newPosY <= box.y) {
-      return;
-    }
+  if (newPosY < box.y - EPSILON / 2.) {
+    return;
   }
-  if (startPosY + startSizeY < box.height + box.y) {
-    if (newPosY + newSizeY >= box.height + box.y) {
-      return;
-    }
+  if (newPosY + newSizeY > box.height + box.y + EPSILON / 2.) {
+    return;
   }
 
   // Resize with the perfect side
@@ -702,19 +716,19 @@ int resizeXOnEmptyArea(int startPosX, int startPosY, float startSizeX,
     float tmpSizeY = tmpCoRSurface->sizeY;
 
     // Is resizable on the empty area
-    if (tmpPosY < startPosY - 1 ||
-        tmpPosY + tmpSizeY > startPosY + startSizeY + 1)
+    if (tmpPosY < startPosY - EPSILON ||
+        tmpPosY + tmpSizeY > startPosY + startSizeY + EPSILON)
       continue;
 
     // Is side by side and at left of the destroyed one
-    if (fabsf(tmpPosX + tmpSizeX - startPosX) > 2) {
+    if (fabsf(tmpPosX + tmpSizeX - startPosX) > EPSILON) {
       continue;
     }
 
     totalResize += tmpCoRSurface->sizeY;
   }
 
-  if (fabsf(totalResize - startSizeY) < 1) {
+  if (fabsf(totalResize - startSizeY) < EPSILON) {
     wl_list_for_each_reverse(tmpCoRSurface, xdgTopLevelsList, link) {
       // Variables
       int tmpPosX = tmpCoRSurface->posX;
@@ -723,12 +737,12 @@ int resizeXOnEmptyArea(int startPosX, int startPosY, float startSizeX,
       float tmpSizeY = tmpCoRSurface->sizeY;
 
       // Is resizable on the empty area
-      if (tmpPosY < startPosY - 1 ||
-          tmpPosY + tmpSizeY > startPosY + startSizeY + 1)
+      if (tmpPosY < startPosY - EPSILON ||
+          tmpPosY + tmpSizeY > startPosY + startSizeY + EPSILON)
         continue;
 
       // Is side by side and at left of the destroyed one
-      if (fabsf(tmpPosX + tmpSizeX - startPosX) > 2) {
+      if (fabsf(tmpPosX + tmpSizeX - startPosX) > EPSILON) {
         continue;
       }
 
@@ -754,19 +768,19 @@ int resizeXOnEmptyArea(int startPosX, int startPosY, float startSizeX,
     float tmpSizeY = tmpCoRSurface->sizeY;
 
     // Is resizable on the empty area
-    if (tmpPosY < startPosY - 1 ||
-        tmpPosY + tmpSizeY > startPosY + startSizeY + 1)
+    if (tmpPosY < startPosY - EPSILON ||
+        tmpPosY + tmpSizeY > startPosY + startSizeY + EPSILON)
       continue;
 
     // Is side by side and at right of the destroyed one
-    if (fabsf(startPosX + startSizeX - tmpPosX) > 2) {
+    if (fabsf(startPosX + startSizeX - tmpPosX) > EPSILON) {
       continue;
     }
 
     totalResize += tmpCoRSurface->sizeY;
   }
 
-  if (fabsf(totalResize - startSizeY) < 1) {
+  if (fabsf(totalResize - startSizeY) < EPSILON) {
     wl_list_for_each_reverse(tmpCoRSurface, xdgTopLevelsList, link) {
       // Variables
       int tmpPosX = tmpCoRSurface->posX;
@@ -774,12 +788,12 @@ int resizeXOnEmptyArea(int startPosX, int startPosY, float startSizeX,
       float tmpSizeY = tmpCoRSurface->sizeY;
 
       // Is resizable on the empty area
-      if (tmpPosY < startPosY - 1 ||
-          tmpPosY + tmpSizeY > startPosY + startSizeY + 1)
+      if (tmpPosY < startPosY - EPSILON ||
+          tmpPosY + tmpSizeY > startPosY + startSizeY + EPSILON)
         continue;
 
       // Is side by side and at right of the destroyed one
-      if (fabsf(startPosX + startSizeX - tmpPosX) > 2) {
+      if (fabsf(startPosX + startSizeX - tmpPosX) > EPSILON) {
         continue;
       }
 
@@ -801,8 +815,8 @@ int resizeXOnEmptyArea(int startPosX, int startPosY, float startSizeX,
   -> Return 1 for minimum one surface have size changed
 */
 
-int resizeYOnEmptyArea(int startPosX, int startPosY, int startSizeX,
-                       int startSizeY, struct wl_list *xdgTopLevelsList) {
+int resizeYOnEmptyArea(int startPosX, int startPosY, float startSizeX,
+                       float startSizeY, struct wl_list *xdgTopLevelsList) {
   int sizeChanged = 0;
   struct coR_surface *tmpCoRSurface;
 
@@ -818,12 +832,12 @@ int resizeYOnEmptyArea(int startPosX, int startPosY, int startSizeX,
     float tmpSizeY = tmpCoRSurface->sizeY;
 
     // Is resizable on the empty area
-    if (tmpPosX < startPosX - 1 ||
-        tmpPosX + tmpSizeX > startPosX + startSizeX + 1)
+    if (tmpPosX < startPosX - EPSILON ||
+        tmpPosX + tmpSizeX > startPosX + startSizeX + EPSILON)
       continue;
 
     // Is side by side and at top of the destroyed one
-    if (fabsf(tmpPosY + tmpSizeY - startPosY) > 2) {
+    if (fabsf(tmpPosY + tmpSizeY - startPosY) > EPSILON) {
       continue;
     }
 
@@ -839,12 +853,12 @@ int resizeYOnEmptyArea(int startPosX, int startPosY, int startSizeX,
       float tmpSizeY = tmpCoRSurface->sizeY;
 
       // Is resizable on the empty area
-      if (tmpPosX < startPosX - 1 ||
-          tmpPosX + tmpSizeX > startPosX + startSizeX + 1)
+      if (tmpPosX < startPosX - EPSILON ||
+          tmpPosX + tmpSizeX > startPosX + startSizeX + EPSILON)
         continue;
 
       // Is side by side and at top of the destroyed one
-      if (fabsf(tmpPosY + tmpSizeY - startPosY) > 2) {
+      if (fabsf(tmpPosY + tmpSizeY - startPosY) > EPSILON) {
         continue;
       }
 
@@ -870,19 +884,19 @@ int resizeYOnEmptyArea(int startPosX, int startPosY, int startSizeX,
     float tmpSizeX = tmpCoRSurface->sizeX;
 
     // Is resizable on the empty area
-    if (tmpPosX < startPosX - 1 ||
-        tmpPosX + tmpSizeX > startPosX + startSizeX + 1)
+    if (tmpPosX < startPosX - EPSILON ||
+        tmpPosX + tmpSizeX > startPosX + startSizeX + EPSILON)
       continue;
 
     // Is side by side and at bottom of the destroyed one
-    if (fabsf(startPosY + startSizeY - tmpPosY) > 2) {
+    if (fabsf(startPosY + startSizeY - tmpPosY) > EPSILON) {
       continue;
     }
 
     totalResize += tmpCoRSurface->sizeX;
   }
 
-  if (fabsf(totalResize - startSizeX) < 1) {
+  if (fabsf(totalResize - startSizeX) < EPSILON) {
     wl_list_for_each_reverse(tmpCoRSurface, xdgTopLevelsList, link) {
       // Variables
       int tmpPosX = tmpCoRSurface->posX;
@@ -890,12 +904,12 @@ int resizeYOnEmptyArea(int startPosX, int startPosY, int startSizeX,
       float tmpSizeX = tmpCoRSurface->sizeX;
 
       // Is resizable on the empty area
-      if (tmpPosX < startPosX - 1 ||
-          tmpPosX + tmpSizeX > startPosX + startSizeX + 1)
+      if (tmpPosX < startPosX - EPSILON ||
+          tmpPosX + tmpSizeX > startPosX + startSizeX + EPSILON)
         continue;
 
       // Is side by side and at bottom of the destroyed one
-      if (fabsf(startPosY + startSizeY - tmpPosY) > 2) {
+      if (fabsf(startPosY + startSizeY - tmpPosY) > EPSILON) {
         continue;
       }
 

@@ -4,6 +4,7 @@
 #include "../inputs/coRInputs.h"
 #include "coRSurface.h"
 #include "coRXdgTopLevel.h"
+#include "src/coRState.h"
 #include <wayland-util.h>
 
 void xwaylandCommitHandler(struct wl_listener *listener, void *data) {
@@ -27,7 +28,8 @@ void xwaylandUnMapHandler(struct wl_listener *listener, void *data) {
       wl_container_of(listener, coRXSurface, unMapListener);
 
   // Remove the focus if own it
-  if (coRXSurface->coRSurface.coRState->focusedSurface == surfaceGetSurface(&coRXSurface->coRSurface)) {
+  if (coRXSurface->coRSurface.coRState->focusedSurface ==
+      surfaceGetSurface(&coRXSurface->coRSurface)) {
     coRXSurface->coRSurface.coRState->focusedSurface = NULL;
     coRXSurface->coRSurface.coRState->focusedCoRSurface = NULL;
 
@@ -93,6 +95,32 @@ void xwaylandAssociateHandler(struct wl_listener *listener, void *data) {
 
   // add the structure to the surface data
   xsurface->surface->data = coRXSurface;
+
+  struct wlr_scene_tree *sceneTree = coRState->workspaces->rootNode;
+
+  // Decoration
+  float color[4] = {0.8, 0.8, 0.8, 1};
+  // Top border
+  coRSurface->decoration[0] =
+      wlr_scene_rect_create(sceneTree, coRSurface->sizeX, 2, color);
+  wlr_scene_node_set_position(&coRSurface->decoration[0]->node, 0, 0);
+
+  // Left border
+  coRSurface->decoration[1] =
+      wlr_scene_rect_create(sceneTree, 2, coRSurface->sizeY, color);
+  wlr_scene_node_set_position(&coRSurface->decoration[1]->node, 0, 0);
+
+  // Down border
+  coRSurface->decoration[2] =
+      wlr_scene_rect_create(sceneTree, coRSurface->sizeX, 2, color);
+  wlr_scene_node_set_position(&coRSurface->decoration[2]->node, 0,
+                              coRSurface->sizeY - 2);
+
+  // Right border
+  coRSurface->decoration[3] =
+      wlr_scene_rect_create(sceneTree, 2, coRSurface->sizeY, color);
+  wlr_scene_node_set_position(&coRSurface->decoration[3]->node,
+                              coRSurface->sizeX - 2, 0);
 
   // Variables
   struct coR_surface *focusedCoRSurface = coRState->focusedCoRSurface;
@@ -200,17 +228,26 @@ endResizeInDissociateFunc:
 
   // 3. Remove the focus if own it
   printf("3.\n");
-  if (coRXSurface->coRSurface.coRState->focusedSurface == surfaceGetSurface(&coRXSurface->coRSurface)) {
+  if (coRXSurface->coRSurface.coRState->focusedSurface ==
+      surfaceGetSurface(&coRXSurface->coRSurface)) {
     coRXSurface->coRSurface.coRState->focusedSurface = NULL;
     coRXSurface->coRSurface.coRState->focusedCoRSurface = NULL;
 
     wlr_seat_keyboard_clear_focus(coRXSurface->coRSurface.coRState->seat);
     wlr_seat_pointer_clear_focus(coRXSurface->coRSurface.coRState->seat);
   }
+
+  // 4. Decoration remove
+  for (int i = 0; i < 4; i++) {
+    if (coRSurface->decoration[i]) {
+      wlr_scene_node_destroy(&coRSurface->decoration[i]->node);
+      coRSurface->decoration[i] = NULL;
+    }
+  }
 }
 
 static void xwaylandFullscreenHandler(struct wl_listener *listener,
-                                         void *data) {
+                                      void *data) {
   printf("->fullscren xwayland\n");
 
   struct coR_xsurface *coRXSurface =
@@ -219,7 +256,6 @@ static void xwaylandFullscreenHandler(struct wl_listener *listener,
 
   surfaceChangeFullscreen(coRState, (struct coR_surface *)coRXSurface);
 }
-
 
 void xwaylandDestroyHandler(struct wl_listener *listener, void *data) {
   printf("-> xwayland Destroy\n");
@@ -252,6 +288,11 @@ void xwaylandNewSurfaceHandler(struct wl_listener *listener, void *data) {
   coRXSurface->coRSurface.surfaceAbs = xsurface;
   coRXSurface->coRSurface.type = TYPE_XSURFACE;
 
+  // 4. Decoration remove
+  for (int i = 0; i < 4; i++) {
+      coRXSurface->coRSurface.decoration[i] = NULL;
+  }
+
   // Listeners
   coRXSurface->configureListener.notify = xwaylandConfigureHandler;
   wl_signal_add(&xsurface->events.request_configure,
@@ -266,9 +307,9 @@ void xwaylandNewSurfaceHandler(struct wl_listener *listener, void *data) {
   coRXSurface->destroyListener.notify = xwaylandDestroyHandler;
   wl_signal_add(&xsurface->events.destroy, &coRXSurface->destroyListener);
 
-
   coRXSurface->fullscreenListener.notify = xwaylandFullscreenHandler;
-  wl_signal_add(&xsurface->events.request_fullscreen, &coRXSurface->fullscreenListener);
+  wl_signal_add(&xsurface->events.request_fullscreen,
+                &coRXSurface->fullscreenListener);
 }
 
 void xwaylandReadyHandler(struct wl_listener *listener, void *data) {

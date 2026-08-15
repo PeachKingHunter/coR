@@ -146,11 +146,57 @@ int surfaceSetSize(struct coR_surface *coRSurface, float newSizeX,
   int type = coRSurface->type;
 
   if (type == TYPE_XDG_TOPLEVEL) {
+    // Decoration
+    // Top border
+    wlr_scene_rect_set_size(coRSurface->decoration[0], coRSurface->sizeX, 2);
+    wlr_scene_node_set_position(&coRSurface->decoration[0]->node, 0, 0);
+
+    // Left border
+    wlr_scene_rect_set_size(coRSurface->decoration[1], 2, coRSurface->sizeY);
+    wlr_scene_node_set_position(&coRSurface->decoration[1]->node, 0, 0);
+
+    // Down border
+    wlr_scene_rect_set_size(coRSurface->decoration[2], coRSurface->sizeX, 2);
+    wlr_scene_node_set_position(&coRSurface->decoration[2]->node, 0,
+                                coRSurface->sizeY - 2);
+
+    // Right border
+    wlr_scene_rect_set_size(coRSurface->decoration[3], 2, coRSurface->sizeY);
+    wlr_scene_node_set_position(&coRSurface->decoration[3]->node,
+                                coRSurface->sizeX - 2, 0);
+
+    // Set size
     return wlr_xdg_toplevel_set_size(coRSurface->surfaceAbs, coRSurface->sizeX,
                                      coRSurface->sizeY);
   }
 
   if (type == TYPE_XSURFACE) {
+    // Decoration
+    if (coRSurface->decoration[0] && coRSurface->decoration[1] &&
+        coRSurface->decoration[2] && coRSurface->decoration[3]) {
+      // Top border
+      wlr_scene_rect_set_size(coRSurface->decoration[0], coRSurface->sizeX, 2);
+      wlr_scene_node_set_position(&coRSurface->decoration[0]->node,
+                                  0 + coRSurface->posX, 0 + coRSurface->posY);
+
+      // Left border
+      wlr_scene_rect_set_size(coRSurface->decoration[1], 2, coRSurface->sizeY);
+      wlr_scene_node_set_position(&coRSurface->decoration[1]->node,
+                                  0 + coRSurface->posX, 0 + coRSurface->posY);
+
+      // Down border
+      wlr_scene_rect_set_size(coRSurface->decoration[2], coRSurface->sizeX, 2);
+      wlr_scene_node_set_position(&coRSurface->decoration[2]->node,
+                                  0 + coRSurface->posX,
+                                  coRSurface->sizeY - 2 + coRSurface->posY);
+
+      // Right border
+      wlr_scene_rect_set_size(coRSurface->decoration[3], 2, coRSurface->sizeY);
+      wlr_scene_node_set_position(&coRSurface->decoration[3]->node,
+                                  coRSurface->sizeX - 2 + coRSurface->posX,
+                                  0 + coRSurface->posY);
+    }
+
     wlr_xwayland_surface_configure(coRSurface->surfaceAbs, 0, 0,
                                    coRSurface->sizeX, coRSurface->sizeY);
     return 1;
@@ -169,6 +215,33 @@ int surfaceSetPos(struct coR_surface *coRSurface, float newPosX,
   // Change the position in the structure
   coRSurface->posX = newPosX;
   coRSurface->posY = newPosY;
+
+  // Get type for decoration move (should change scene tree for not move
+  // decoration but just an parent scene tree)
+  int type = coRSurface->type;
+  if (type == TYPE_XSURFACE) {
+    // Decoration
+    if (coRSurface->decoration[0] && coRSurface->decoration[1] &&
+        coRSurface->decoration[2] && coRSurface->decoration[3]) {
+      // Top border
+      wlr_scene_node_set_position(&coRSurface->decoration[0]->node,
+                                  0 + coRSurface->posX, 0 + coRSurface->posY);
+
+      // Left border
+      wlr_scene_node_set_position(&coRSurface->decoration[1]->node,
+                                  0 + coRSurface->posX, 0 + coRSurface->posY);
+
+      // Down border
+      wlr_scene_node_set_position(&coRSurface->decoration[2]->node,
+                                  0 + coRSurface->posX,
+                                  coRSurface->sizeY - 2 + coRSurface->posY);
+
+      // Right border
+      wlr_scene_node_set_position(&coRSurface->decoration[3]->node,
+                                  coRSurface->sizeX - 2 + coRSurface->posX,
+                                  0 + coRSurface->posY);
+    }
+  }
 
   // Change position
   struct wlr_scene_node *node = surfaceGetNode(coRSurface);
