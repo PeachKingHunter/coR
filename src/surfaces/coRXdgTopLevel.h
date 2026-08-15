@@ -42,8 +42,8 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
   -> Return 0 for no changement
   -> Return 1 for minimum one surface have size changed
 */
-int resizeXOnEmptyArea(int startPosX, int startPosY, int startSizeX,
-                       int startSizeY, struct wl_list *xdgTopLevelsList);
+int resizeXOnEmptyArea(int startPosX, int startPosY, float startSizeX,
+                       float startSizeY, struct wl_list *xdgTopLevelsList);
 int resizeYOnEmptyArea(int startPosX, int startPosY, int startSizeX,
                        int startSizeY, struct wl_list *xdgTopLevelsList);
 

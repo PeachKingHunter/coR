@@ -20,8 +20,6 @@ extern int lastDeltaX;
 struct coR_surface *movingTopLevel = NULL;
 int startMovingPosX, startMovingPosY;
 
-extern int lastDeltaY;
-
 void startResizingSurface(struct coR_state *coRState,
                           struct coR_surface *newResizingSurface) {
   resizingTopLevel = newResizingSurface;
@@ -31,8 +29,6 @@ void startResizingSurface(struct coR_state *coRState,
   startResizingPosY = resizingTopLevel->posY;
   startResizingWidth = resizingTopLevel->sizeX;
   startResizingHeight = resizingTopLevel->sizeY;
-  lastDeltaX = 0;
-  lastDeltaY = 0;
 }
 
 void stopResizingSurface() {
@@ -55,8 +51,6 @@ void cursorButtonHandler(struct wl_listener *listener, void *data) {
       if (surfaceIsFullScreen(coRState->focusedCoRSurface) == 0) {
         startResizingSurface(coRState, coRState->focusedCoRSurface);
 
-        lastDeltaX = 0;
-        lastDeltaY = 0;
         return;
       }
     } else if (event->state == WL_POINTER_BUTTON_STATE_RELEASED &&

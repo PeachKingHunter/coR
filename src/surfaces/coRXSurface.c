@@ -160,8 +160,8 @@ void xwaylandDissociateHandler(struct wl_listener *listener, void *data) {
   // Variables
   int startPosX = coRSurface->posX;
   int startPosY = coRSurface->posY;
-  int startSizeX = coRSurface->sizeX;
-  int startSizeY = coRSurface->sizeY;
+  float startSizeX = coRSurface->sizeX;
+  float startSizeY = coRSurface->sizeY;
 
   struct coR_workspace *lastWorkspace =
       coRState->workspaces + coRSurface->onWorkspaceNum;

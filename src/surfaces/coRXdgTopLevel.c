@@ -7,6 +7,7 @@
 #include "src/surfaces/coRLayerSurface.h"
 #include "wlr/types/wlr_xdg_decoration_v1.h"
 #include "wlr/util/box.h"
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <wayland-util.h>
@@ -141,8 +142,8 @@ static void destroyXdgTopLevelHandler(struct wl_listener *listener,
   // Variables
   int startPosX = coRSurface->posX;
   int startPosY = coRSurface->posY;
-  int startSizeX = coRSurface->sizeX;
-  int startSizeY = coRSurface->sizeY;
+  float startSizeX = coRSurface->sizeX;
+  float startSizeY = coRSurface->sizeY;
 
   struct coR_workspace *lastWorkspace =
       coRState->workspaces + coRSurface->onWorkspaceNum;
@@ -263,17 +264,18 @@ void newXdgTopLevelHandler(struct wl_listener *listener, void *data) {
                 &coRXdgTopLevel->fullscreenListener);
 }
 
-/* Resize toplevel for cursor motion
-startPosX & startPosY are surface pos
-startCursorPosX & startCursorPosY are cursor pos
-startSizeX and startSizeY are size of the resizingTopLevel at default
+#define SURFACE_MIN_SIZE 50
+/*
+  Resize toplevel for cursor motion
+  startPosX & startPosY are surface pos
+  startCursorPosX & startCursorPosY are cursor pos
+  startSizeX and startSizeY are size of the resizingTopLevel at default
+  Axis X & Axis Y separated
 */
-int lastDeltaX = 0;
-int lastDeltaY = 0;
-void resizeTopLevel(struct coR_surface *resizingTopLevel,
-                    struct coR_state *coRState, int startCursorPosX,
-                    int startCursorPosY, int startSizeX, int startSizeY,
-                    int startPosX, int startPosY) {
+void resizeTopLevelX(struct coR_surface *resizingTopLevel,
+                     struct coR_state *coRState, int startCursorPosX,
+                     int startCursorPosY, int startSizeX, int startSizeY,
+                     int startPosX, int startPosY) {
   printf("-> resizeTopLevel\n");
   // Verif args
   if (resizingTopLevel == NULL || coRState == NULL)
@@ -297,17 +299,10 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
   // -- resize in axis X --
   // Variables
   int deltaX = (int)(coRState->cursor->x) - startCursorPosX;
-  int currentSizeX = resizingTopLevel->sizeX;
+  float currentSizeX = resizingTopLevel->sizeX;
   int currentPosX = resizingTopLevel->posX;
-  int newSizeX = currentSizeX;
+  float newSizeX = currentSizeX;
   int newPosX = startPosX;
-
-  // Variables for axis Y
-  int deltaY = (int)(coRState->cursor->y) - startCursorPosY;
-  int currentSizeY = resizingTopLevel->sizeY;
-  int currentPosY = resizingTopLevel->posY;
-  int newSizeY = currentSizeY;
-  int newPosY = startPosY;
 
   // get the side to resize
   float threshold = startPosX + startSizeX / 2.;
@@ -327,176 +322,194 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
     possibleSides--;
   }
 
-  if (possibleSides > 0) {
-    // Resize with the perfect side
-    if (side) {
-      // Resize left side
-      newPosX = startPosX + deltaX;
-      newSizeX = startSizeX - deltaX;
+  // Change new value
+  if (possibleSides == 0) {
+    return;
+  }
 
-      // Verif if can resize all other surfaces
-      struct coR_surface *tmpCoRSurface;
-      wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
-        // Skip himself
-        if (tmpCoRSurface == resizingTopLevel)
-          continue;
+  // Resize with the perfect side
+  if (side) {
+    // Resize left side
+    newPosX = startPosX + deltaX;
+    newSizeX = startSizeX - deltaX;
+  } else {
+    // Resize right side
+    newSizeX = startSizeX + deltaX;
+  }
 
-        // Variables
-        int tmpPosX = tmpCoRSurface->posX;
-        int tmpSizeX = tmpCoRSurface->sizeX;
-        int lastNewSizeX = startSizeX - lastDeltaX;
-        int lastNewPosX = startPosX + lastDeltaX;
+  // Verif minimal size
+  if (newSizeX <= SURFACE_MIN_SIZE)
+    return;
 
-        // Special case: surface below resizingTopLevel
-        if (abs(tmpPosX - currentPosX) < 20) {
-          int newTmpSize = tmpCoRSurface->sizeX - (newPosX - currentPosX);
-          if (newTmpSize < 50) {
-            stopResizingSurface();
-            return;
-          }
-        }
-
-        // Test colision
-        if ((tmpPosX + tmpSizeX >= newPosX - 2 &&
-             tmpPosX <= newPosX - 2 + newSizeX) ||
-            (tmpPosX + tmpSizeX >= lastNewPosX - 2 &&
-             tmpPosX <= lastNewPosX - 2 + lastNewSizeX)) {
-          if (tmpPosX + tmpSizeX * 8 / 10 <= newPosX + 5) {
-            // Resize
-            int newTmpSize = newPosX - tmpPosX;
-            if (newTmpSize < 50) {
-              stopResizingSurface();
-              return;
-            }
-          }
-        }
-      }
-
-      // Resize other surfaces
-      wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
-        // Skip himself
-        if (tmpCoRSurface == resizingTopLevel)
-          continue;
-
-        // Variables
-        int tmpPosX = tmpCoRSurface->posX;
-        int tmpSizeX = tmpCoRSurface->sizeX;
-        int lastNewSizeX = startSizeX - lastDeltaX;
-        int lastNewPosX = startPosX + lastDeltaX;
-
-        // Special case: surface below resizingTopLevel
-        if (abs(tmpPosX - currentPosX) < 20) {
-          surfaceSetPos(tmpCoRSurface,
-                        tmpCoRSurface->posX + newPosX - currentPosX,
-                        tmpCoRSurface->posY);
-          surfaceSetSize(tmpCoRSurface,
-                         tmpCoRSurface->sizeX - (newPosX - currentPosX),
-                         tmpCoRSurface->sizeY);
-        }
-
-        // Test colision
-        if ((tmpPosX + tmpSizeX >= newPosX - 2 &&
-             tmpPosX <= newPosX - 2 + newSizeX) ||
-            (tmpPosX + tmpSizeX >= lastNewPosX - 2 &&
-             tmpPosX <= lastNewPosX - 2 + lastNewSizeX)) {
-          if (tmpPosX + tmpSizeX * 8 / 10 < newPosX + 5) {
-            // Resize
-            surfaceSetSize(tmpCoRSurface, newPosX - tmpPosX,
-                           tmpCoRSurface->sizeY);
-          }
-        }
-      }
-      lastDeltaX = deltaX;
-
-    } else {
-      // Resize right side
-      newSizeX = startSizeX + deltaX;
-
-      // Verif if can resize all other surfaces
-      // C'est horrible, je devrais vraiment changer comment je gère mes fenêtre
-      // car j'en est mare. Je ne le ferait pas pour l'axe Y
-      struct coR_surface *tmpCoRSurface;
-      wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
-        // Skip himself
-        if (tmpCoRSurface == resizingTopLevel)
-          continue;
-
-        // Variables
-        int tmpPosX = tmpCoRSurface->posX;
-        int tmpSizeX = tmpCoRSurface->sizeX;
-        int lastNewSizeX = startSizeX + lastDeltaX;
-
-        // Special case: surface on border with it -> Resize
-        if (abs(tmpPosX + tmpSizeX - currentPosX - currentSizeX) < 20) {
-          if (tmpCoRSurface->sizeX + newSizeX - currentSizeX < 33) {
-            stopResizingSurface();
-            return;
-          }
-        }
-
-        // Test colision
-        if ((tmpPosX + tmpSizeX >= newPosX && tmpPosX <= newPosX + newSizeX) ||
-            (tmpPosX + tmpSizeX >= newPosX &&
-             tmpPosX <= newPosX + lastNewSizeX)) {
-          if (newPosX + newSizeX * 8 / 10 < tmpPosX + 5) {
-            // Resize
-            if (tmpPosX + tmpSizeX - newPosX - newSizeX < 33) {
-              stopResizingSurface();
-              return;
-            }
-          }
-        }
-      }
-
-      // Resize other surfaces
-      wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
-        // Skip himself
-        if (tmpCoRSurface == resizingTopLevel)
-          continue;
-
-        // Variables
-        int tmpPosX = tmpCoRSurface->posX;
-        // int tmpSizeX = tmpXdgTopLevel->xdgTopLevel->current.width;
-        int tmpSizeX = tmpCoRSurface->sizeX;
-        int lastNewSizeX = startSizeX + lastDeltaX;
-
-        // Special case: surface below resizingTopLevel
-        if (abs(tmpPosX + tmpSizeX - currentPosX - currentSizeX) < 20) {
-          surfaceSetSize(tmpCoRSurface,
-                         tmpCoRSurface->sizeX + newSizeX - currentSizeX,
-                         tmpCoRSurface->sizeY);
-        }
-
-        // Test colision
-        if ((tmpPosX + tmpSizeX >= newPosX && tmpPosX <= newPosX + newSizeX) ||
-            (tmpPosX + tmpSizeX >= newPosX &&
-             tmpPosX <= newPosX + lastNewSizeX)) {
-          if (newPosX + newSizeX * 8 / 10 < tmpPosX + 5) {
-            // Resize
-            int tmpLastSizeX = tmpCoRSurface->sizeX;
-            surfaceSetSize(tmpCoRSurface,
-                           tmpPosX + tmpSizeX - newPosX - newSizeX,
-                           tmpCoRSurface->sizeY);
-            // Move surface
-            surfaceSetPos(tmpCoRSurface,
-                          tmpCoRSurface->posX + tmpLastSizeX -
-                              tmpCoRSurface->sizeX,
-                          tmpCoRSurface->posY);
-          }
-        }
-      }
-      lastDeltaX = deltaX;
+  // No resize sides glued to output's border
+  if (startPosX > box.x) {
+    if (newPosX <= box.x) {
+      return;
     }
   }
-  // ----
+  if (startPosX + startSizeX < box.width + box.x) {
+    if (newPosX + newSizeX >= box.width + box.x) {
+      return;
+    }
+  }
 
-  // -- resize in axis Y -- (Copy of axis X)
+  // Resize with the perfect side
+  if (side) {
+    // Left side
+    struct coR_surface *tmpCoRSurface;
+    // Verif before resizing
+    wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
+      // Skip himself
+      if (tmpCoRSurface == resizingTopLevel)
+        continue;
+
+      // Snap other surfaces on same column
+      if (tmpCoRSurface->posX == currentPosX) {
+        if (tmpCoRSurface->sizeX - (newPosX - currentPosX) < SURFACE_MIN_SIZE) {
+          printf("STOP resizing\n");
+          return;
+        }
+      }
+
+      // Resize surface side by side and at left with resizingTopLevel
+      if (fabsf(tmpCoRSurface->posX + tmpCoRSurface->sizeX - currentPosX) < 1) {
+        if (tmpCoRSurface->sizeX + (newPosX - currentPosX) < SURFACE_MIN_SIZE) {
+          printf("STOP resizing\n");
+          return;
+        }
+      }
+    }
+
+    // Resize other surfaces
+    wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
+      // Skip himself
+      if (tmpCoRSurface == resizingTopLevel)
+        continue;
+
+      int deltaPosX = newPosX - currentPosX;
+
+      // Snap other surfaces on same column
+      if (tmpCoRSurface->posX == currentPosX) {
+        surfaceSetPos(tmpCoRSurface, tmpCoRSurface->posX + deltaPosX,
+                      tmpCoRSurface->posY);
+        surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX - deltaPosX,
+                       tmpCoRSurface->sizeY);
+      }
+
+      // Resize surface side by side and at left with resizingTopLevel
+      if (fabsf(tmpCoRSurface->posX + tmpCoRSurface->sizeX - currentPosX) < 1) {
+        surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX + deltaPosX,
+                       tmpCoRSurface->sizeY);
+      }
+    }
+
+  } else {
+    // Right side
+    struct coR_surface *tmpCoRSurface;
+    // Verif before resizing
+    wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
+      // Skip himself
+      if (tmpCoRSurface == resizingTopLevel)
+        continue;
+
+      // Variables
+      int tmpPosX = tmpCoRSurface->posX;
+      float tmpSizeX = tmpCoRSurface->sizeX;
+
+      int deltaSizeX = newSizeX - currentSizeX;
+
+      // Snap other surfaces on same column
+      if (fabsf(tmpPosX + tmpSizeX - currentPosX - currentSizeX) < 1) {
+        if (tmpCoRSurface->sizeX + deltaSizeX < SURFACE_MIN_SIZE) {
+          printf("STOP resizing\n");
+          return;
+        }
+      }
+
+      // Resize surface side by side and at right with resizingTopLevel
+      if (fabsf(resizingTopLevel->posX + resizingTopLevel->sizeX - tmpPosX) <
+          1) {
+        if (tmpSizeX - deltaSizeX < SURFACE_MIN_SIZE) {
+          printf("STOP resizing\n");
+          return;
+        }
+      }
+    }
+
+    // Resize other surfaces
+    wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
+      // Skip himself
+      if (tmpCoRSurface == resizingTopLevel)
+        continue;
+
+      // Variables
+      int tmpPosX = tmpCoRSurface->posX;
+      float tmpSizeX = tmpCoRSurface->sizeX;
+
+      int deltaSizeX = newSizeX - currentSizeX;
+
+      // Snap other surfaces on same column
+      if (fabsf(tmpPosX + tmpSizeX - currentPosX - currentSizeX) < 1) {
+        surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX + deltaSizeX,
+                       tmpCoRSurface->sizeY);
+      }
+
+      // Resize surface side by side and at right with resizingTopLevel
+      if (fabsf(resizingTopLevel->posX + resizingTopLevel->sizeX -
+                tmpCoRSurface->posX) < 1) {
+        surfaceSetPos(tmpCoRSurface, tmpCoRSurface->posX + deltaSizeX,
+                      tmpCoRSurface->posY);
+        surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX - deltaSizeX,
+                       tmpCoRSurface->sizeY);
+      }
+    }
+  }
+
+  surfaceSetPos(resizingTopLevel, newPosX, resizingTopLevel->posY);
+  surfaceSetSize(resizingTopLevel, newSizeX, resizingTopLevel->sizeY);
+}
+
+/*
+  Copy of resizeTopLevelX with AI for ajust x axis to y axis
+*/
+void resizeTopLevelY(struct coR_surface *resizingTopLevel,
+                     struct coR_state *coRState, int startCursorPosX,
+                     int startCursorPosY, int startSizeX, int startSizeY,
+                     int startPosX, int startPosY) {
+  printf("-> resizeTopLevel\n");
+  // Verif args
+  if (resizingTopLevel == NULL || coRState == NULL)
+    return;
+
+  struct coR_workspace *workspace =
+      coRState->workspaces + coRState->focusedWorkspaceNum;
+  struct wl_list *xdgTopLevelsList = &workspace->xdgTopLevels;
+
+  // More than 1 surface
+  if (wl_list_length(xdgTopLevelsList) <= 1)
+    return;
+
+  // Var
+  struct wlr_output *output = coRState->focusedOutput;
+
+  // Get usable area of the output
+  struct wlr_box box;
+  getUsableArea(coRState, output, &box);
+
+  // -- resize in axis Y --
+  // Variables
+  int deltaY = (int)(coRState->cursor->y) - startCursorPosY;
+  float currentSizeY = resizingTopLevel->sizeY;
+  int currentPosY = resizingTopLevel->posY;
+  float newSizeY = currentSizeY;
+  int newPosY = startPosY;
+
   // get the side to resize
-  threshold = startPosY + startSizeY / 2.;
-  side = startCursorPosY -
-             coRState->workspaces[resizingTopLevel->onWorkspaceNum].posY <
-         threshold;
-  possibleSides = 2;
+  float threshold = startPosY + startSizeY / 2.;
+  int side = startCursorPosY -
+                 coRState->workspaces[resizingTopLevel->onWorkspaceNum].posY <
+             threshold;
+  int possibleSides = 2;
 
   // No resize sides glued to output's border
   if (startPosY <= box.y) {
@@ -509,192 +522,161 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
     possibleSides--;
   }
 
-  if (possibleSides > 0) {
-    // Resize with the perfect side
-    if (side) {
-      // Resize top side
-      newPosY = startPosY + deltaY;
-      newSizeY = startSizeY - deltaY;
-
-      // Verif if can resize all other surfaces
-      struct coR_surface *tmpCoRSurface;
-      wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
-        // Skip himself
-        if (tmpCoRSurface == resizingTopLevel)
-          continue;
-
-        // Variables
-        int tmpPosY = tmpCoRSurface->posY;
-        int tmpSizeY = tmpCoRSurface->sizeY;
-        int lastNewSizeY = startSizeY - lastDeltaY;
-        int lastNewPosY = startPosY + lastDeltaY;
-
-        // Special case: surface below resizingTopLevel
-        if (abs(tmpPosY - currentPosY) < 20) {
-          int newTmpSize = tmpCoRSurface->sizeY - (newPosY - currentPosY);
-          if (newTmpSize < 50) {
-            stopResizingSurface();
-            return;
-          }
-        }
-
-        // Test colision
-        if ((tmpPosY + tmpSizeY >= newPosY - 2 &&
-             tmpPosY <= newPosY - 2 + newSizeY) ||
-            (tmpPosY + tmpSizeY >= lastNewPosY - 2 &&
-             tmpPosY <= lastNewPosY - 2 + lastNewSizeY)) {
-          if (tmpPosY + tmpSizeY * 8 / 10 <= newPosY + 5) {
-            // Resize
-            int newTmpSize = newPosY - tmpPosY;
-            if (newTmpSize < 50) {
-              stopResizingSurface();
-              return;
-            }
-          }
-        }
-      }
-
-      // Resize other surfaces
-      wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
-        // Skip himself
-        if (tmpCoRSurface == resizingTopLevel)
-          continue;
-
-        // Variables
-        int tmpPosY = tmpCoRSurface->posY;
-        int tmpSizeY = tmpCoRSurface->sizeY;
-        int lastNewSizeY = startSizeY - lastDeltaY;
-        int lastNewPosY = startPosY + lastDeltaY;
-
-        // Special case: surface below resizingTopLevel
-        if (abs(tmpPosY - currentPosY) < 20) {
-          surfaceSetPos(tmpCoRSurface, tmpCoRSurface->posX,
-                        tmpCoRSurface->posY + newPosY - currentPosY);
-          surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX,
-                         tmpCoRSurface->sizeY - (newPosY - currentPosY));
-        }
-
-        // Test collision
-        if ((tmpPosY + tmpSizeY >= newPosY - 2 &&
-             tmpPosY <= newPosY - 2 + newSizeY) ||
-            (tmpPosY + tmpSizeY >= lastNewPosY - 2 &&
-             tmpPosY <= lastNewPosY - 2 + lastNewSizeY)) {
-          if (tmpPosY + tmpSizeY * 8 / 10 < newPosY + 5) {
-            // Resize
-            surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX,
-                           newPosY - tmpPosY);
-          }
-        }
-      }
-      lastDeltaY = deltaY;
-
-    } else {
-      // Resize bottom side
-      newSizeY = startSizeY + deltaY;
-
-      // Verif if can resize all other surfaces
-      struct coR_surface *tmpCoRSurface;
-      wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
-        // Skip himself
-        if (tmpCoRSurface == resizingTopLevel)
-          continue;
-
-        // Variables
-        int tmpPosY = tmpCoRSurface->posY;
-        int tmpSizeY = tmpCoRSurface->sizeY;
-        int lastNewSizeY = startSizeY + lastDeltaY;
-
-        // Special case: surface on border with it -> Resize
-        if (abs(tmpPosY + tmpSizeY - currentPosY - currentSizeY) < 20) {
-          if (tmpCoRSurface->sizeY + newSizeY - currentSizeY < 33) {
-            stopResizingSurface();
-            return;
-          }
-        }
-
-        // Test colision
-        if ((tmpPosY + tmpSizeY >= newPosY && tmpPosY <= newPosY + newSizeY) ||
-            (tmpPosY + tmpSizeY >= newPosY &&
-             tmpPosY <= newPosY + lastNewSizeY)) {
-          if (newPosY + newSizeY * 8 / 10 < tmpPosY + 5) {
-            // Resize
-            if (tmpPosY + tmpSizeY - newPosY - newSizeY < 33) {
-              stopResizingSurface();
-              return;
-            }
-          }
-        }
-      }
-
-      // Resize other surfaces
-      wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
-        // Skip himself
-        if (tmpCoRSurface == resizingTopLevel)
-          continue;
-
-        // Variables
-        int tmpPosY = tmpCoRSurface->posY;
-        int tmpSizeY = tmpCoRSurface->sizeY;
-        int lastNewSizeY = startSizeY + lastDeltaY;
-
-        // Special case: surface below resizingTopLevel
-        if (abs(tmpPosY + tmpSizeY - currentPosY - currentSizeY) < 20) {
-          surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX,
-                         tmpCoRSurface->sizeY + newSizeY - currentSizeY);
-        }
-
-        // Test collision
-        if ((tmpPosY + tmpSizeY >= newPosY && tmpPosY <= newPosY + newSizeY) ||
-            (tmpPosY + tmpSizeY >= newPosY &&
-             tmpPosY <= newPosY + lastNewSizeY)) {
-          if (newPosY + newSizeY * 8 / 10 < tmpPosY + 5) {
-            // Resize
-            int tmpLastSizeY = tmpCoRSurface->sizeY;
-            surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX,
-                           tmpPosY + tmpSizeY - newPosY - newSizeY);
-            // Move surface
-            surfaceSetPos(tmpCoRSurface, tmpCoRSurface->posX,
-                          tmpCoRSurface->posY + tmpLastSizeY -
-                              tmpCoRSurface->sizeY);
-          }
-        }
-      }
-      lastDeltaY = deltaY;
-    }
+  // Change new value
+  if (possibleSides == 0) {
+    return;
   }
-  // ----
+
+  // Resize with the perfect side
+  if (side) {
+    // Resize top side
+    newPosY = startPosY + deltaY;
+    newSizeY = startSizeY - deltaY;
+  } else {
+    // Resize bottom side
+    newSizeY = startSizeY + deltaY;
+  }
 
   // Verif minimal size
-  if (newSizeX <= 22 || newSizeY <= 22)
+  if (newSizeY <= SURFACE_MIN_SIZE)
     return;
 
   // No resize sides glued to output's border
-  if (startPosX > box.x) {
-    if (newPosX <= box.x) {
-      return;
-    }
-  }
-
-  if (startPosX + startSizeX < box.width + box.x) {
-    if (newPosX + newSizeX >= box.width + box.x) {
-      return;
-    }
-  }
-
   if (startPosY > box.y) {
     if (newPosY <= box.y) {
       return;
     }
   }
-
   if (startPosY + startSizeY < box.height + box.y) {
     if (newPosY + newSizeY >= box.height + box.y) {
       return;
     }
   }
 
-  surfaceSetPos(resizingTopLevel, newPosX, newPosY);
-  surfaceSetSize(resizingTopLevel, newSizeX, newSizeY);
+  // Resize with the perfect side
+  if (side) {
+    // Top side
+    struct coR_surface *tmpCoRSurface;
+    // Verif before resizing
+    wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
+      // Skip himself
+      if (tmpCoRSurface == resizingTopLevel)
+        continue;
+
+      // Snap other surfaces on same row
+      if (tmpCoRSurface->posY == currentPosY) {
+        if (tmpCoRSurface->sizeY - (newPosY - currentPosY) < SURFACE_MIN_SIZE) {
+          printf("STOP resizing\n");
+          return;
+        }
+      }
+
+      // Resize surface side by side and at top with resizingTopLevel
+      if (fabsf(tmpCoRSurface->posY + tmpCoRSurface->sizeY - currentPosY) < 1) {
+        if (tmpCoRSurface->sizeY + (newPosY - currentPosY) < SURFACE_MIN_SIZE) {
+          printf("STOP resizing\n");
+          return;
+        }
+      }
+    }
+
+    // Resize other surfaces
+    wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
+      // Skip himself
+      if (tmpCoRSurface == resizingTopLevel)
+        continue;
+
+      int deltaPosY = newPosY - currentPosY;
+
+      // Snap other surfaces on same row
+      if (tmpCoRSurface->posY == currentPosY) {
+        surfaceSetPos(tmpCoRSurface, tmpCoRSurface->posX,
+                      tmpCoRSurface->posY + deltaPosY);
+        surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX,
+                       tmpCoRSurface->sizeY - deltaPosY);
+      }
+
+      // Resize surface side by side and at top with resizingTopLevel
+      if (fabsf(tmpCoRSurface->posY + tmpCoRSurface->sizeY - currentPosY) < 1) {
+        surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX,
+                       tmpCoRSurface->sizeY + deltaPosY);
+      }
+    }
+
+  } else {
+    // Bottom side
+    struct coR_surface *tmpCoRSurface;
+    // Verif before resizing
+    wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
+      // Skip himself
+      if (tmpCoRSurface == resizingTopLevel)
+        continue;
+
+      // Variables
+      int tmpPosY = tmpCoRSurface->posY;
+      float tmpSizeY = tmpCoRSurface->sizeY;
+
+      int deltaSizeY = newSizeY - currentSizeY;
+
+      // Snap other surfaces on same row
+      if (fabsf(tmpPosY + tmpSizeY - currentPosY - currentSizeY) < 1) {
+        if (tmpCoRSurface->sizeY + deltaSizeY < SURFACE_MIN_SIZE) {
+          printf("STOP resizing\n");
+          return;
+        }
+      }
+
+      // Resize surface side by side and at bottom with resizingTopLevel
+      if (fabsf(resizingTopLevel->posY + resizingTopLevel->sizeY - tmpPosY) <
+          1) {
+        if (tmpSizeY - deltaSizeY < SURFACE_MIN_SIZE) {
+          printf("STOP resizing\n");
+          return;
+        }
+      }
+    }
+
+    // Resize other surfaces
+    wl_list_for_each(tmpCoRSurface, xdgTopLevelsList, link) {
+      // Skip himself
+      if (tmpCoRSurface == resizingTopLevel)
+        continue;
+
+      // Variables
+      int tmpPosY = tmpCoRSurface->posY;
+      float tmpSizeY = tmpCoRSurface->sizeY;
+
+      int deltaSizeY = newSizeY - currentSizeY;
+
+      // Snap other surfaces on same row
+      if (fabsf(tmpPosY + tmpSizeY - currentPosY - currentSizeY) < 1) {
+        surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX,
+                       tmpCoRSurface->sizeY + deltaSizeY);
+      }
+
+      // Resize surface side by side and at bottom with resizingTopLevel
+      if (fabsf(resizingTopLevel->posY + resizingTopLevel->sizeY -
+                tmpCoRSurface->posY) < 1) {
+        surfaceSetPos(tmpCoRSurface, tmpCoRSurface->posX,
+                      tmpCoRSurface->posY + deltaSizeY);
+        surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX,
+                       tmpCoRSurface->sizeY - deltaSizeY);
+      }
+    }
+  }
+
+  surfaceSetPos(resizingTopLevel, resizingTopLevel->posX, newPosY);
+  surfaceSetSize(resizingTopLevel, resizingTopLevel->sizeX, newSizeY);
+}
+
+void resizeTopLevel(struct coR_surface *resizingTopLevel,
+                    struct coR_state *coRState, int startCursorPosX,
+                    int startCursorPosY, int startSizeX, int startSizeY,
+                    int startPosX, int startPosY) {
+  resizeTopLevelX(resizingTopLevel, coRState, startCursorPosX, startCursorPosY,
+                  startSizeX, startSizeY, startPosX, startPosY);
+  resizeTopLevelY(resizingTopLevel, coRState, startCursorPosX, startCursorPosY,
+                  startSizeX, startSizeY, startPosX, startPosY);
 }
 
 /*
@@ -703,58 +685,113 @@ void resizeTopLevel(struct coR_surface *resizingTopLevel,
   -> Return 0 for no changement
   -> Return 1 for minimum one surface have size changed
 */
-int resizeXOnEmptyArea(int startPosX, int startPosY, int startSizeX,
-                       int startSizeY, struct wl_list *xdgTopLevelsList) {
-  // Resize on X axis
-  int side = 0;
+int resizeXOnEmptyArea(int startPosX, int startPosY, float startSizeX,
+                       float startSizeY, struct wl_list *xdgTopLevelsList) {
   int sizeChanged = 0;
-
   struct coR_surface *tmpCoRSurface;
+
+  // ---- Left surface resize to right
+
+  // Verif loop
+  float totalResize = 0;
   wl_list_for_each_reverse(tmpCoRSurface, xdgTopLevelsList, link) {
     // Variables
     int tmpPosX = tmpCoRSurface->posX;
     int tmpPosY = tmpCoRSurface->posY;
-    int tmpSizeX = tmpCoRSurface->sizeX;
-    int tmpSizeY = tmpCoRSurface->sizeY;
+    float tmpSizeX = tmpCoRSurface->sizeX;
+    float tmpSizeY = tmpCoRSurface->sizeY;
 
     // Is resizable on the empty area
-    if (!(tmpPosY >= startPosY) ||
-        !(tmpPosY + tmpSizeY <= startPosY + startSizeY))
+    if (tmpPosY < startPosY - 1 ||
+        tmpPosY + tmpSizeY > startPosY + startSizeY + 1)
       continue;
 
-    // Is side by side with it
-    // Left side
-    if (abs(tmpPosX + tmpSizeX - startPosX) < 5) {
-      if (side == 2)
-        continue;
-      else if (side == 0)
-        side = 1;
-    }
-
-    // Right side
-    else if (abs(startPosX + startSizeX - tmpPosX) < 5) {
-      if (side == 1)
-        continue;
-      else if (side == 0)
-        side = 2;
-    }
-
-    // Not side by side
-    else {
+    // Is side by side and at left of the destroyed one
+    if (fabsf(tmpPosX + tmpSizeX - startPosX) > 2) {
       continue;
     }
 
-    // Resize and move
-    if (startPosX < tmpPosX) {
-      surfaceSetPos(tmpCoRSurface, startPosX, tmpCoRSurface->posY);
-    }
-
-    surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX + startSizeX,
-                   tmpCoRSurface->sizeY);
-
-    sizeChanged = 1;
+    totalResize += tmpCoRSurface->sizeY;
   }
-  return sizeChanged;
+
+  if (fabsf(totalResize - startSizeY) < 1) {
+    wl_list_for_each_reverse(tmpCoRSurface, xdgTopLevelsList, link) {
+      // Variables
+      int tmpPosX = tmpCoRSurface->posX;
+      int tmpPosY = tmpCoRSurface->posY;
+      float tmpSizeX = tmpCoRSurface->sizeX;
+      float tmpSizeY = tmpCoRSurface->sizeY;
+
+      // Is resizable on the empty area
+      if (tmpPosY < startPosY - 1 ||
+          tmpPosY + tmpSizeY > startPosY + startSizeY + 1)
+        continue;
+
+      // Is side by side and at left of the destroyed one
+      if (fabsf(tmpPosX + tmpSizeX - startPosX) > 2) {
+        continue;
+      }
+
+      // If at right move it (not in this part
+      // surfaceSetPos(tmpCoRSurface, startPosX, tmpCoRSurface->posY);
+      surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX + startSizeX,
+                     tmpCoRSurface->sizeY);
+      sizeChanged = 1;
+    }
+
+    if (sizeChanged == 1)
+      return sizeChanged;
+  }
+
+  // ---- Right surface resize to left
+
+  // Verif loop
+  totalResize = 0;
+  wl_list_for_each_reverse(tmpCoRSurface, xdgTopLevelsList, link) {
+    // Variables
+    int tmpPosX = tmpCoRSurface->posX;
+    int tmpPosY = tmpCoRSurface->posY;
+    float tmpSizeY = tmpCoRSurface->sizeY;
+
+    // Is resizable on the empty area
+    if (tmpPosY < startPosY - 1 ||
+        tmpPosY + tmpSizeY > startPosY + startSizeY + 1)
+      continue;
+
+    // Is side by side and at right of the destroyed one
+    if (fabsf(startPosX + startSizeX - tmpPosX) > 2) {
+      continue;
+    }
+
+    totalResize += tmpCoRSurface->sizeY;
+  }
+
+  if (fabsf(totalResize - startSizeY) < 1) {
+    wl_list_for_each_reverse(tmpCoRSurface, xdgTopLevelsList, link) {
+      // Variables
+      int tmpPosX = tmpCoRSurface->posX;
+      int tmpPosY = tmpCoRSurface->posY;
+      float tmpSizeY = tmpCoRSurface->sizeY;
+
+      // Is resizable on the empty area
+      if (tmpPosY < startPosY - 1 ||
+          tmpPosY + tmpSizeY > startPosY + startSizeY + 1)
+        continue;
+
+      // Is side by side and at right of the destroyed one
+      if (fabsf(startPosX + startSizeX - tmpPosX) > 2) {
+        continue;
+      }
+
+      surfaceSetPos(tmpCoRSurface, startPosX, tmpCoRSurface->posY);
+      surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX + startSizeX,
+                     tmpCoRSurface->sizeY);
+      sizeChanged = 1;
+    }
+    return sizeChanged;
+  }
+
+  return 0;
 }
 
 /*
@@ -763,60 +800,114 @@ int resizeXOnEmptyArea(int startPosX, int startPosY, int startSizeX,
   -> Return 0 for no changement
   -> Return 1 for minimum one surface have size changed
 */
+
 int resizeYOnEmptyArea(int startPosX, int startPosY, int startSizeX,
                        int startSizeY, struct wl_list *xdgTopLevelsList) {
-  // Resize on Y axis
-  int side = 0;
   int sizeChanged = 0;
-
   struct coR_surface *tmpCoRSurface;
+
+  // ---- Top surface resize to bottom
+
+  // Verif loop
+  float totalResize = 0;
   wl_list_for_each_reverse(tmpCoRSurface, xdgTopLevelsList, link) {
     // Variables
     int tmpPosX = tmpCoRSurface->posX;
     int tmpPosY = tmpCoRSurface->posY;
-    int tmpSizeX = tmpCoRSurface->sizeX;
-    int tmpSizeY = tmpCoRSurface->sizeY;
+    float tmpSizeX = tmpCoRSurface->sizeX;
+    float tmpSizeY = tmpCoRSurface->sizeY;
 
     // Is resizable on the empty area
-    if (!(tmpPosX >= startPosX) ||
-        !(tmpPosX + tmpSizeX <= startPosX + startSizeX))
+    if (tmpPosX < startPosX - 1 ||
+        tmpPosX + tmpSizeX > startPosX + startSizeX + 1)
       continue;
 
-    // Is side by side with it
-    // Top side
-    if (abs(tmpPosY + tmpSizeY - startPosY) < 5) {
-      if (side == 2)
-        continue;
-      else if (side == 0)
-        side = 1;
-    }
-
-    // Bottom side
-    else if (abs(startPosY + startSizeY - tmpPosY) < 5) {
-      if (side == 1)
-        continue;
-      else if (side == 0)
-        side = 2;
-    }
-
-    // Not side by side
-    else {
+    // Is side by side and at top of the destroyed one
+    if (fabsf(tmpPosY + tmpSizeY - startPosY) > 2) {
       continue;
     }
 
-    // Resize and move
-    if (startPosY < tmpPosY) {
-      surfaceSetPos(tmpCoRSurface, tmpCoRSurface->posX, startPosY);
-    }
-
-    ;
-    surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX,
-                   tmpCoRSurface->sizeY + startSizeY);
-
-    sizeChanged = 1;
+    totalResize += tmpCoRSurface->sizeX;
   }
 
-  return sizeChanged;
+  if (fabsf(totalResize - startSizeX) < 1) {
+    wl_list_for_each_reverse(tmpCoRSurface, xdgTopLevelsList, link) {
+      // Variables
+      int tmpPosX = tmpCoRSurface->posX;
+      int tmpPosY = tmpCoRSurface->posY;
+      float tmpSizeX = tmpCoRSurface->sizeX;
+      float tmpSizeY = tmpCoRSurface->sizeY;
+
+      // Is resizable on the empty area
+      if (tmpPosX < startPosX - 1 ||
+          tmpPosX + tmpSizeX > startPosX + startSizeX + 1)
+        continue;
+
+      // Is side by side and at top of the destroyed one
+      if (fabsf(tmpPosY + tmpSizeY - startPosY) > 2) {
+        continue;
+      }
+
+      // If at bottom move it (not in this part)
+      // surfaceSetPos(tmpCoRSurface, tmpCoRSurface->posX, startPosY);
+      surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX,
+                     tmpCoRSurface->sizeY + startSizeY);
+      sizeChanged = 1;
+    }
+
+    if (sizeChanged == 1)
+      return sizeChanged;
+  }
+
+  // ---- Bottom surface resize to top
+
+  // Verif loop
+  totalResize = 0;
+  wl_list_for_each_reverse(tmpCoRSurface, xdgTopLevelsList, link) {
+    // Variables
+    int tmpPosX = tmpCoRSurface->posX;
+    int tmpPosY = tmpCoRSurface->posY;
+    float tmpSizeX = tmpCoRSurface->sizeX;
+
+    // Is resizable on the empty area
+    if (tmpPosX < startPosX - 1 ||
+        tmpPosX + tmpSizeX > startPosX + startSizeX + 1)
+      continue;
+
+    // Is side by side and at bottom of the destroyed one
+    if (fabsf(startPosY + startSizeY - tmpPosY) > 2) {
+      continue;
+    }
+
+    totalResize += tmpCoRSurface->sizeX;
+  }
+
+  if (fabsf(totalResize - startSizeX) < 1) {
+    wl_list_for_each_reverse(tmpCoRSurface, xdgTopLevelsList, link) {
+      // Variables
+      int tmpPosX = tmpCoRSurface->posX;
+      int tmpPosY = tmpCoRSurface->posY;
+      float tmpSizeX = tmpCoRSurface->sizeX;
+
+      // Is resizable on the empty area
+      if (tmpPosX < startPosX - 1 ||
+          tmpPosX + tmpSizeX > startPosX + startSizeX + 1)
+        continue;
+
+      // Is side by side and at bottom of the destroyed one
+      if (fabsf(startPosY + startSizeY - tmpPosY) > 2) {
+        continue;
+      }
+
+      surfaceSetPos(tmpCoRSurface, tmpCoRSurface->posX, startPosY);
+      surfaceSetSize(tmpCoRSurface, tmpCoRSurface->sizeX,
+                     tmpCoRSurface->sizeY + startSizeY);
+      sizeChanged = 1;
+    }
+    return sizeChanged;
+  }
+
+  return 0;
 }
 
 void newDecorationHandler(struct wl_listener *listener, void *data) {

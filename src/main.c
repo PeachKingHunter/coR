@@ -295,6 +295,7 @@ int main() {
 
 /* TODO:
 - La tablette ne bouge pas le curseur en temps réel
+- Decoration -> Créer des bordures de fenêtre
 - Ajouter la possibilité de changer la config avec un fichier texte
   | Raccourci PERSONALISER pour Resize, move
 - LayerSurface in Background no focus ?? LayerSurface request focus ??
@@ -302,8 +303,6 @@ int main() {
 - Selection de surface avec clavier (décaler le focus sur les surfaces
 adjacentes)
 - Crash si aucun écran
-- Changer le système de gestion des fenêtre !!
-- Decoration -> Créer des bordures de fenêtre
 - Tablet device input: Should have the tablet implementation (pressure,...) in
 addition for application that recognize it. And the tablet pad and other button
 on it
