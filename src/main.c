@@ -38,12 +38,13 @@
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
+#include <wlr/types/wlr_linux_drm_syncobj_v1.h>
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_primary_selection_v1.h>
 #include <wlr/types/wlr_screencopy_v1.h>
 #include <wlr/types/wlr_viewporter.h>
-#include <wlr/types/wlr_xdg_output_v1.h>
 #include <wlr/types/wlr_xdg_decoration_v1.h>
+#include <wlr/types/wlr_xdg_output_v1.h>
 
 // wlroot for initialization Pattern
 #include <wayland-server-core.h>
@@ -105,7 +106,7 @@ int main() {
   coRState.backend = backend;
 
   // 3. Inputs
-  coRState.session = wlr_session_create(eventLoop);
+  // coRState.session = wlr_session_create(eventLoop);
   coRState.seat = wlr_seat_create(display, "cearT0");
 
   //  Set capabilities
@@ -188,8 +189,12 @@ int main() {
   wlr_viewporter_create(display);
   wlr_fractional_scale_manager_v1_create(display, FRACTIONAL_SCALE_VERSION);
   wlr_presentation_create(display, backend, PRESENTATION_VERSION);
-  wlr_linux_dmabuf_v1_create_with_renderer(display, LINUX_DMABUF_VERSION,
-                                           coRState.renderer);
+
+  struct wlr_linux_dmabuf_v1 *linuxDmabufV1 =
+      wlr_linux_dmabuf_v1_create_with_renderer(display, LINUX_DMABUF_VERSION,
+                                               coRState.renderer);
+  wlr_scene_set_linux_dmabuf_v1(coRState.scene, linuxDmabufV1);
+
   wlr_data_device_manager_create(coRState.display);
   wlr_screencopy_manager_v1_create(display);
   wlr_xdg_output_manager_v1_create(display, coRState.outputLayout);
@@ -201,6 +206,13 @@ int main() {
 
   struct wlr_xdg_decoration_manager_v1 *decoration =
       wlr_xdg_decoration_manager_v1_create(display);
+
+  int drm_fd = wlr_renderer_get_drm_fd(coRState.renderer);
+  if (drm_fd >= 0 && coRState.renderer->features.timeline &&
+      coRState.backend->features.timeline) {
+
+    wlr_linux_drm_syncobj_manager_v1_create(display, 1, drm_fd);
+  }
 
   // 6. Listeners
   coRState.newOutputListener.notify = newOutputHandler;
@@ -312,7 +324,7 @@ int main() {
   wlr_renderer_destroy(coRState.renderer);
   wlr_cursor_destroy(coRState.cursor);
   wlr_seat_destroy(coRState.seat);
-  wlr_session_destroy(coRState.session);
+  // wlr_session_destroy(coRState.session);
   wlr_backend_destroy(backend);
   wl_display_destroy(display);
   exit(1);

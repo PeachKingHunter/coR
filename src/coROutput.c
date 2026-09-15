@@ -12,11 +12,13 @@ void outputFrameHandler(struct wl_listener *listener, void *data) {
   // struct coR_state *coRState = coROutput->coRState;
   struct wlr_output *output = coROutput->output;
   struct wlr_scene *scene = coROutput->sceneOutput->scene;
-
-  // Render Surfaces of this output
   struct wlr_scene_output *scene_output =
       wlr_scene_get_scene_output(scene, output);
-  wlr_scene_output_commit(scene_output, NULL);
+
+  // Render Surfaces of this output
+  if (!wlr_scene_output_commit(scene_output, NULL)) {
+    return;
+  }
 
   // Send frame with time
   struct timespec now;

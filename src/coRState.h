@@ -49,7 +49,7 @@ struct coR_state {
   int scrollPower;
 
   // Inputs
-  struct wlr_session *session;
+  // struct wlr_session *session;
   struct wlr_seat *seat; // For peripherics
 
   struct wlr_cursor *cursor;
