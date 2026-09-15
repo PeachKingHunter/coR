@@ -10,6 +10,7 @@
 
 // Input managing
 #include "wlr/backend/session.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_seat.h>
@@ -33,10 +34,12 @@
 
 // Other protocoles
 #include <wlr/types/wlr_cursor_shape_v1.h> // for hyprpaper cursor_shape_manager
+#include <wlr/types/wlr_data_control_v1.h>
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
 #include <wlr/types/wlr_presentation_time.h>
+#include <wlr/types/wlr_primary_selection_v1.h>
 #include <wlr/types/wlr_viewporter.h>
 #include <wlr/types/wlr_xdg_decoration_v1.h>
 
@@ -56,6 +59,9 @@
 #define PRESENTATION_VERSION 2
 #define LINUX_DMABUF_VERSION 5
 
+void setPrimarySelectionHandler(struct wl_listener *listener, void *data);
+void setSelectionHandler(struct wl_listener *listener, void *data);
+void newDataControlManagerHandler(struct wl_listener *listener, void *data);
 int main() {
   // More logs
   // wlr_log_init(WLR_DEBUG, NULL);
@@ -187,6 +193,11 @@ int main() {
                                            coRState.renderer);
   wlr_data_device_manager_create(coRState.display);
 
+  // Data control manager (copy & paste)
+  // struct wlr_data_control_manager_v1 *dataControlManager =
+  wlr_data_control_manager_v1_create(display);
+  wlr_primary_selection_v1_device_manager_create(display);
+
   struct wlr_xdg_decoration_manager_v1 *decoration =
       wlr_xdg_decoration_manager_v1_create(display);
 
@@ -229,6 +240,19 @@ int main() {
   coRState.newDecorationListener.notify = newDecorationHandler;
   wl_signal_add(&decoration->events.new_toplevel_decoration,
                 &coRState.newDecorationListener);
+
+  // coRState.newDataControlManagerListener.notify =
+  // newDataControlManagerHandler;
+  // wl_signal_add(&dataControlManager->events.new_device,
+  //               &coRState.newDataControlManagerListener);
+
+  coRState.setSelectionListener.notify = setSelectionHandler;
+  wl_signal_add(&coRState.seat->events.request_set_selection,
+                &coRState.setSelectionListener);
+
+  coRState.setPrimarySelectionListener.notify = setPrimarySelectionHandler;
+  wl_signal_add(&coRState.seat->events.request_set_primary_selection,
+                &coRState.setPrimarySelectionListener);
 
   // 8. Workspaces's structure initialisation
   coRState.focusedWorkspaceNum = 0;
@@ -294,7 +318,11 @@ int main() {
 }
 
 /* TODO:
-- Decoration -> Créer des bordures de fenêtre
+- Implémenter les screenshot
+- Déconnecté la tablette graphique fait crash
+- Implémenter les popup (de layerSurface et XdgTopLevel -> Tray right click)
+- Quand on ferme un fenêtre, le focus doit être redonner automatiquement
+- Le keep focus des layerSuface n'est pas implémenté (ex sur l'appLauncher)
 - Ajouter la possibilité de changer la config avec un fichier texte
   | Raccourci PERSONALISER pour Resize, move
 - LayerSurface in Background no focus ?? LayerSurface request focus ??
@@ -308,3 +336,5 @@ on it
 - Touch device input
 - Être heureux (｡◕‿‿◕｡)
 */
+
+

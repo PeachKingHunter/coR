@@ -13,7 +13,6 @@
 #define NB_WORKSPACE 10 // 0 to 9
 
 // Structures
-
 struct coR_workspace {
   struct wlr_output *currentOutput;
   struct wlr_scene_tree *rootNode;
@@ -78,6 +77,16 @@ struct coR_state {
   struct wl_listener xwaylandNewSurfaceListener;
 
   struct wl_listener newDecorationListener;
+
+  // struct wl_listener newDataControlManagerListener;
+  struct wl_listener setSelectionListener;
+  struct wl_listener setPrimarySelectionListener;
 };
+
+// Functions
+// For copy & paste
+// void newDataControlManagerHandler(struct wl_listener *listener, void *data);
+void setSelectionHandler(struct wl_listener *listener, void *data);
+void setPrimarySelectionHandler(struct wl_listener *listener, void *data);
 
 #endif
