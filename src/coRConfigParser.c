@@ -22,6 +22,11 @@ void skipUselessWord(char **splittedStr) {
     *splittedStr = strtok(NULL, " ");
     continue;
   }
+
+  if (strcmp(*splittedStr, "\\|") == 0) {
+    (*splittedStr)[0] = '|';
+    (*splittedStr)[1] = '\0';
+  }
 }
 
 void runConfig(struct coR_state *coRState) {
@@ -212,13 +217,25 @@ void runConfig(struct coR_state *coRState) {
         elemsArray[nbElem] = splittedStr;
         nbElem++;
 
-        printf("%10s\n", splittedStr);
+        printf("%s ", splittedStr);
         splittedStr = strtok(NULL, " ");
         skipUselessWord(&splittedStr);
       }
+      printf("\n");
 
-      command->command = calloc(nbElem + 1, sizeof(char *));
-      command->command[nbElem] = NULL;
+      // sh command
+      if (strcmp(elemsArray[0], "sh") == 0 &&
+          strcmp(elemsArray[1], "-c") == 0) {
+        command->command = calloc(3 + 1, sizeof(char *)); // sh -c command NULL
+        command->command[0] = strdup("sh");
+        command->command[1] = strdup("-c");
+        command->command[3] = NULL;
+
+      } else {
+        command->command = calloc(nbElem + 1, sizeof(char *));
+        command->command[nbElem] = NULL;
+      }
+
       if (command->command == NULL) {
         free(command->keys);
         free(command);
@@ -226,19 +243,36 @@ void runConfig(struct coR_state *coRState) {
       }
 
       // Import in the command structure
-      i = 0;
-      while (i < nbElem) {
-        char *str = elemsArray[i];
+      // With sh
+      if (strcmp(elemsArray[0], "sh") == 0 &&
+          strcmp(elemsArray[1], "-c") == 0) {
+        char buffer[500];
+        buffer[0] = '\0';
 
-        // Clean it
-        for (int j = 0; j < strlen(str); j++)
-          if (str[j] == '\n')
-            str[j] = '\0';
+        for (int index = 2; index < nbElem; index++) {
+          strcat(buffer, elemsArray[index]);
+          strcat(buffer, " ");
+        }
 
-        // Place into the structure
-        command->command[i] = strdup(str);
-        printf("%s\n", command->command[i]);
-        i++;
+        printf(">> %s\n", buffer);
+        command->command[2] = strdup(buffer);
+
+      } else {
+        // Without sh -> binary directly
+        i = 0;
+        while (i < nbElem) {
+          char *str = elemsArray[i];
+
+          // Clean it
+          for (int j = 0; j < strlen(str); j++)
+            if (str[j] == '\n')
+              str[j] = '\0';
+
+          // Place into the structure
+          command->command[i] = strdup(str);
+          printf("%s\n", command->command[i]);
+          i++;
+        }
       }
 
       wl_list_insert(&coRState->commands, &command->link);

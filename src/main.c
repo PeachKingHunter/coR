@@ -40,7 +40,9 @@
 #include <wlr/types/wlr_linux_dmabuf_v1.h>
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_primary_selection_v1.h>
+#include <wlr/types/wlr_screencopy_v1.h>
 #include <wlr/types/wlr_viewporter.h>
+#include <wlr/types/wlr_xdg_output_v1.h>
 #include <wlr/types/wlr_xdg_decoration_v1.h>
 
 // wlroot for initialization Pattern
@@ -59,9 +61,6 @@
 #define PRESENTATION_VERSION 2
 #define LINUX_DMABUF_VERSION 5
 
-void setPrimarySelectionHandler(struct wl_listener *listener, void *data);
-void setSelectionHandler(struct wl_listener *listener, void *data);
-void newDataControlManagerHandler(struct wl_listener *listener, void *data);
 int main() {
   // More logs
   // wlr_log_init(WLR_DEBUG, NULL);
@@ -192,6 +191,8 @@ int main() {
   wlr_linux_dmabuf_v1_create_with_renderer(display, LINUX_DMABUF_VERSION,
                                            coRState.renderer);
   wlr_data_device_manager_create(coRState.display);
+  wlr_screencopy_manager_v1_create(display);
+  wlr_xdg_output_manager_v1_create(display, coRState.outputLayout);
 
   // Data control manager (copy & paste)
   // struct wlr_data_control_manager_v1 *dataControlManager =
@@ -318,7 +319,6 @@ int main() {
 }
 
 /* TODO:
-- Implémenter les screenshot
 - Déconnecté la tablette graphique fait crash
 - Implémenter les popup (de layerSurface et XdgTopLevel -> Tray right click)
 - Quand on ferme un fenêtre, le focus doit être redonner automatiquement
@@ -336,5 +336,3 @@ on it
 - Touch device input
 - Être heureux (｡◕‿‿◕｡)
 */
-
-
