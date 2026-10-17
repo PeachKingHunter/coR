@@ -331,9 +331,7 @@ int main() {
 }
 
 /* TODO:
-- Déconnecté la tablette graphique fait crash
 - Implémenter les popup (de layerSurface et XdgTopLevel -> Tray right click)
-- Quand on ferme un fenêtre, le focus doit être redonner automatiquement
 - Le keep focus des layerSuface n'est pas implémenté (ex sur l'appLauncher)
 - Ajouter la possibilité de changer la config avec un fichier texte
   | Raccourci PERSONALISER pour Resize, move

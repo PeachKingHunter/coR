@@ -31,9 +31,7 @@ void startResizingSurface(struct coR_state *coRState,
   startResizingHeight = resizingTopLevel->sizeY;
 }
 
-void stopResizingSurface() {
-  resizingTopLevel = NULL;
-}
+void stopResizingSurface() { resizingTopLevel = NULL; }
 
 // ---- ## Curseur ## ---- //
 void cursorButtonHandler(struct wl_listener *listener, void *data) {
@@ -216,21 +214,7 @@ void cursorMotionHandler(struct wl_listener *listener, void *data) {
                   event->delta_y);
   wlr_scene_node_set_position(&coRState->cursorScene->node, posX, posY);
 
-  // -> Get the focused workspace
-  for (int i = 0; i < NB_WORKSPACE; i++) {
-    struct coR_workspace *currentWorkspace = coRState->workspaces + i;
-    if (currentWorkspace->currentOutput != NULL) {
-      if (currentWorkspace->posX <= posX &&
-          posX <=
-              currentWorkspace->posX + currentWorkspace->currentOutput->width &&
-          currentWorkspace->posY <= posY &&
-          posY <= currentWorkspace->posY +
-                      currentWorkspace->currentOutput->height) {
-        coRState->focusedWorkspaceNum = i;
-        break;
-      }
-    }
-  }
+  focusHoverWorkspace(coRState);
 
   // -> Change le focus si souris sur surface
   double sX, sY;
@@ -295,9 +279,8 @@ void cursorAxisHandler(struct wl_listener *listener, void *data) {
   int invertedDeltaDiscrete = coRState->scrollPower * event->delta_discrete;
 
   wlr_seat_pointer_notify_axis(
-      coRState->seat, event->time_msec, event->orientation,
-      invertedDelta, invertedDeltaDiscrete,
-      event->source, event->relative_direction);
+      coRState->seat, event->time_msec, event->orientation, invertedDelta,
+      invertedDeltaDiscrete, event->source, event->relative_direction);
   wlr_seat_pointer_notify_frame(coRState->seat);
 }
 

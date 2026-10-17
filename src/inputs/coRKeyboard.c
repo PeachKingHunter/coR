@@ -99,13 +99,21 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
       continue;
     }
 
-    // Application
-    else if (fork() == 0) {
-      printf("newApp\n");
+    // New Application
+    else {
+      // Below are action not able in fullscreen
+      if (surfaceIsFullScreen(coRState->focusedCoRSurface) == 1) {
+        continue;
+      }
 
-      execvp(command->command[0], command->command);
-      perror("execvp");
-      exit(1);
+      if (fork() == 0) {
+        printf("newApp\n");
+
+        execvp(command->command[0], command->command);
+        perror("execvp");
+        exit(1);
+      }
+      return;
     }
   }
 
@@ -122,9 +130,6 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
       int otherWorkspaceNum = event->keycode - 1;
       if (otherWorkspaceNum > 9)
         otherWorkspaceNum = 0;
-
-      // TODO: should not change the workspace if contain a surface in
-      // fullscreen
 
       printf("%d\n", otherWorkspaceNum);
       if (coRState->focusedWorkspaceNum != otherWorkspaceNum) {
@@ -154,6 +159,8 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
                                     otherWorkspace->posX, otherWorkspace->posY);
 
         coRState->focusedWorkspaceNum = otherWorkspaceNum;
+
+        focusHoverSurface(coRState);
       }
       return;
     }
@@ -161,8 +168,6 @@ void keyKeyboardHandler(struct wl_listener *listener, void *data) {
 
   if (event->keycode == 125) // touche "super"
     superPressed = !superPressed;
-
-  // superPressed = true; // Temp for testing
 
   // Vérifie si une surface à le focus
   if (!coRKeyboardI->coRState->focusedSurface) {

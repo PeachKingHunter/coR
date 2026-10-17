@@ -24,6 +24,7 @@ struct coR_tablet_input {
   struct wl_listener proximityListener;
   struct wl_listener buttonListener;
   struct wl_listener tipListener;
+  struct wl_listener destroyListener;
 };
 
 // Functions
@@ -31,5 +32,6 @@ void axisTabletHandler(struct wl_listener *listener, void *data);
 void proximityTabletHandler(struct wl_listener *listener, void *data);
 void buttonTabletHandler(struct wl_listener *listener, void *data);
 void tipTabletHandler(struct wl_listener *listener, void *data);
+void destroyTabletHandler(struct wl_listener *listener, void *data);
 
 #endif

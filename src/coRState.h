@@ -85,7 +85,6 @@ struct coR_state {
 
 // Functions
 // For copy & paste
-// void newDataControlManagerHandler(struct wl_listener *listener, void *data);
 void setSelectionHandler(struct wl_listener *listener, void *data);
 void setPrimarySelectionHandler(struct wl_listener *listener, void *data);
 

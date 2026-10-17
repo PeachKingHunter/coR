@@ -5,6 +5,7 @@
 #include "coRLayerSurface.h"
 #include "coRXSurface.h"
 #include "coRXdgTopLevel.h"
+#include <stdio.h>
 
 int surfaceIsFullScreen(struct coR_surface *coRSurface) {
   // Verif entry
@@ -304,10 +305,18 @@ int surfaceSetFullscreenMode(struct coR_surface *coRSurface, bool mode) {
   int type = coRSurface->type;
 
   if (type == TYPE_XDG_TOPLEVEL) {
+    wlr_scene_node_set_enabled(&coRSurface->decoration[0]->node, !mode);
+    wlr_scene_node_set_enabled(&coRSurface->decoration[1]->node, !mode);
+    wlr_scene_node_set_enabled(&coRSurface->decoration[2]->node, !mode);
+    wlr_scene_node_set_enabled(&coRSurface->decoration[3]->node, !mode);
     return wlr_xdg_toplevel_set_fullscreen(coRSurface->surfaceAbs, mode);
   }
 
   if (type == TYPE_XSURFACE) {
+    wlr_scene_node_set_enabled(&coRSurface->decoration[0]->node, !mode);
+    wlr_scene_node_set_enabled(&coRSurface->decoration[1]->node, !mode);
+    wlr_scene_node_set_enabled(&coRSurface->decoration[2]->node, !mode);
+    wlr_scene_node_set_enabled(&coRSurface->decoration[3]->node, !mode);
     wlr_xwayland_surface_set_fullscreen(coRSurface->surfaceAbs, mode);
     return 1;
   }
@@ -367,5 +376,47 @@ void surfaceChangeFullscreen(struct coR_state *coRState,
     wlr_scene_node_reparent(surfaceGetNode(focusedTopLevel),
                             workspace->rootNode);
     wlr_scene_node_set_enabled(&workspace->rootNode->node, true);
+  }
+}
+
+void focusHoverWorkspace(struct coR_state *coRState) {
+  // Verif entry
+  if (!coRState)
+    return;
+
+  double posX = coRState->cursor->x;
+  double posY = coRState->cursor->y;
+
+  // Change the workspace focused
+  for (int i = 0; i < NB_WORKSPACE; i++) {
+    struct coR_workspace *currentWorkspace = coRState->workspaces + i;
+    if (currentWorkspace->currentOutput != NULL) {
+      if (currentWorkspace->posX <= posX &&
+          posX <=
+              currentWorkspace->posX + currentWorkspace->currentOutput->width &&
+          currentWorkspace->posY <= posY &&
+          posY <= currentWorkspace->posY +
+                      currentWorkspace->currentOutput->height) {
+        coRState->focusedWorkspaceNum = i;
+        break;
+      }
+    }
+  }
+}
+
+void focusHoverSurface(struct coR_state *coRState) {
+  // Verif entry
+  if (!coRState)
+    return;
+
+  // -> Change le focus si souris sur surface
+  double sX, sY;
+  struct wlr_surface *surface = getSurfaceBelowCursor(coRState, &sX, &sY);
+  if (surface) {
+    // Si le focus n'est pas dessus
+    if (coRState->focusedSurface != surface) {
+      inputsChangeSurfaceToFocus(coRState, surface, sX, sY);
+      printf("focusedSurfaceChanged !!\n");
+    }
   }
 }

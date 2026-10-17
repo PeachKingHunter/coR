@@ -115,6 +115,15 @@ static void unmapXdgTopLevelHandler(struct wl_listener *listener, void *data) {
     coRState->focusedCoRSurface = NULL;
     wlr_seat_keyboard_clear_focus(coRState->seat);
     wlr_seat_pointer_clear_focus(coRState->seat);
+
+    // // -> Change le focus si souris sur surface (copy from coRCursor change
+    // // focus modified)
+    // double sX, sY;
+    // struct wlr_surface *surface = getSurfaceBelowCursor(coRState, &sX, &sY);
+    // if (surface) {
+    //   // Lui donne le fcus
+    //   inputsChangeSurfaceToFocus(coRState, surface, sX, sY);
+    // }
   }
 }
 
@@ -177,6 +186,19 @@ endResizeInDestroyFunc:
 
   // 3.
   free(coRXdgTopLevel);
+
+  // 4. Give the new focus if no focus
+  // -> Change le focus si souris sur une surface (copy from coRCursor for change
+  // focus modified)
+  if (coRState->focusedSurface == NULL) {
+    double sX, sY;
+    struct wlr_surface *surface = getSurfaceBelowCursor(coRState, &sX, &sY);
+    if (surface) {
+      // Lui donne le fcus
+      inputsChangeSurfaceToFocus(coRState, surface, sX, sY);
+    }
+  }
+
   printf("<- destroy XdgTopLevel\n");
 }
 
@@ -198,7 +220,10 @@ void newXdgTopLevelHandler(struct wl_listener *listener, void *data) {
   printf("new xdg surface role=%d\n", surface->role);
 
   if (surface->role == WLR_XDG_SURFACE_ROLE_POPUP)
-    return;
+    printf("Role défini comme popup\n");
+  if (surface->role == WLR_XDG_SURFACE_ROLE_NONE)
+    printf("Role pas défini\n");
+
   /*
     1.Structure de donnée
     2.Stockage (liste) -> Pas ici mais dans map

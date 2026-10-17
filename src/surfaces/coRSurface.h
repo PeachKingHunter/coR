@@ -55,4 +55,8 @@ int surfaceSetPosTemp(struct coR_surface  *coRSurface, float newPosX, float newP
 int surfaceSetFullscreenMode(struct coR_surface *coRSurface, bool mode);
 void surfaceChangeFullscreen(struct coR_state *coRState, struct coR_surface *coRSurface);
 
+// Focus
+void focusHoverWorkspace(struct coR_state *coRState);
+void focusHoverSurface(struct coR_state *coRState);
+
 #endif

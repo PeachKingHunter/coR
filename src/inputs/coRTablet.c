@@ -160,3 +160,25 @@ void tipTabletHandler(struct wl_listener *listener, void *data) {
   //   wlr_tablet_v2_tablet_tool_notify_tilt(coRTabletI->tabletToolV2, event->x,
   //                                         event->y);
 }
+
+void destroyTabletHandler(struct wl_listener *listener, void *data) {
+
+  printf("-> destroy Tablet Input\n");
+  /*
+    1. Listeners
+  */
+
+  // Variables
+  struct coR_tablet_input *coRTabI =
+      wl_container_of(listener, coRTabI, destroyListener);
+
+  // 1.
+  wl_list_remove(&coRTabI->axisListener.link);
+  wl_list_remove(&coRTabI->buttonListener.link);
+  wl_list_remove(&coRTabI->proximityListener.link);
+  wl_list_remove(&coRTabI->tipListener.link);
+  wl_list_remove(&coRTabI->destroyListener.link);
+
+  free(coRTabI);
+  printf("<- destroy Tablet Input\n");
+}

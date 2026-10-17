@@ -35,6 +35,15 @@ void xwaylandUnMapHandler(struct wl_listener *listener, void *data) {
 
     wlr_seat_keyboard_clear_focus(coRXSurface->coRSurface.coRState->seat);
     wlr_seat_pointer_clear_focus(coRXSurface->coRSurface.coRState->seat);
+
+    // -> Change le focus si souris sur surface (copy from coRCursor change
+    // focus modified)
+    double sX, sY;
+    struct wlr_surface *surface = getSurfaceBelowCursor(coRXSurface->coRSurface.coRState, &sX, &sY);
+    if (surface) {
+      // Lui donne le fcus
+      inputsChangeSurfaceToFocus(coRXSurface->coRSurface.coRState, surface, sX, sY);
+    }
   }
 }
 
@@ -242,6 +251,18 @@ endResizeInDissociateFunc:
     if (coRSurface->decoration[i]) {
       wlr_scene_node_destroy(&coRSurface->decoration[i]->node);
       coRSurface->decoration[i] = NULL;
+    }
+  }
+
+  // 5. Give the new focus if no focus
+  // -> Change le focus si souris sur une surface (copy from coRCursor for change
+  // focus modified)
+  if (coRState->focusedSurface == NULL) {
+    double sX, sY;
+    struct wlr_surface *surface = getSurfaceBelowCursor(coRState, &sX, &sY);
+    if (surface) {
+      // Lui donne le fcus
+      inputsChangeSurfaceToFocus(coRState, surface, sX, sY);
     }
   }
 }

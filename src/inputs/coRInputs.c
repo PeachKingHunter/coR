@@ -122,6 +122,9 @@ void newInputHandler(struct wl_listener *listener, void *data) {
     coRTabletI->tipListener.notify = tipTabletHandler;
     wl_signal_add(&coRTabletI->tablet->wlr_tablet->events.tip,
                   &coRTabletI->tipListener);
+    coRTabletI->destroyListener.notify = destroyTabletHandler;
+    wl_signal_add(&coRTabletI->tablet->wlr_tablet->base.events.destroy,
+                  &coRTabletI->destroyListener);
     break;
   case WLR_INPUT_DEVICE_TABLET_PAD:
     printf("tablet's pad detected\n");
@@ -138,6 +141,7 @@ void newInputHandler(struct wl_listener *listener, void *data) {
 void inputsChangeSurfaceToFocus(struct coR_state *coRState,
                                 struct wlr_surface *surface, int cursorX,
                                 int cursorY) {
+  printf("-> inputsChangeSurfaceToFocus\n");
   // Obtien le clavier
   struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(coRState->seat);
 
